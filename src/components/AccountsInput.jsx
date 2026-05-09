@@ -1,6 +1,10 @@
 import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { accountDetailCategories, accountDetailCategoryLabels, accountTypeLabels, accountTypes, cashFlowTags, defaultDetailCategory, normalizeDetailCategory, parseExcelPaste } from "../utils/accounting.js";
+import { accountDetailCategories, accountDetailCategoryLabels, accountTypeLabels, accountTypes, cashFlowTags, defaultDetailCategory, normalizeDetailCategory, normalizeNumber, parseExcelPaste, splitDebitCredit } from "../utils/accounting.js";
+
+function amount(value) {
+  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
 
 export default function AccountsInput({ accounts, setAccounts }) {
   const [query, setQuery] = useState("");
@@ -12,6 +16,37 @@ export default function AccountsInput({ accounts, setAccounts }) {
       return matchesQuery && matchesType;
     });
   }, [accounts, query, typeFilter]);
+  const visibleRows = useMemo(() => {
+    return visibleAccounts.map((account) => {
+      const openingNet = normalizeNumber(account.openingDebit) - normalizeNumber(account.openingCredit);
+      const periodNet = normalizeNumber(account.debit) - normalizeNumber(account.credit);
+      const periodBalance = splitDebitCredit(periodNet);
+      const endingBalance = splitDebitCredit(openingNet + periodNet);
+
+      return {
+        ...account,
+        periodBalanceDebit: periodBalance.debit,
+        periodBalanceCredit: periodBalance.credit,
+        endingDebit: endingBalance.debit,
+        endingCredit: endingBalance.credit
+      };
+    });
+  }, [visibleAccounts]);
+  const visibleTotals = useMemo(() => {
+    return visibleRows.reduce(
+      (totals, account) => ({
+        openingDebit: totals.openingDebit + normalizeNumber(account.openingDebit),
+        openingCredit: totals.openingCredit + normalizeNumber(account.openingCredit),
+        debit: totals.debit + normalizeNumber(account.debit),
+        credit: totals.credit + normalizeNumber(account.credit),
+        periodBalanceDebit: totals.periodBalanceDebit + account.periodBalanceDebit,
+        periodBalanceCredit: totals.periodBalanceCredit + account.periodBalanceCredit,
+        endingDebit: totals.endingDebit + account.endingDebit,
+        endingCredit: totals.endingCredit + account.endingCredit
+      }),
+      { openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, periodBalanceDebit: 0, periodBalanceCredit: 0, endingDebit: 0, endingCredit: 0 }
+    );
+  }, [visibleRows]);
 
   function updateAccount(id, key, value) {
     setAccounts((current) =>
@@ -62,23 +97,34 @@ export default function AccountsInput({ accounts, setAccounts }) {
         </select>
       </div>
       <div className="accounting-table-wrap">
-        <table className="accounting-entry-table">
+        <table className="accounting-entry-table detailed-entry-table">
           <thead>
+            <tr>
+              <th colSpan="5">بيانات الحساب</th>
+              <th colSpan="2">رصيد بداية</th>
+              <th colSpan="2">حركة الفترة</th>
+              <th colSpan="2">رصيد الفترة</th>
+              <th colSpan="2">رصيد نهاية</th>
+              <th className="no-print" rowSpan="2"><ClipboardPaste size={16} /></th>
+            </tr>
             <tr>
               <th>رقم</th>
               <th>اسم الحساب</th>
               <th>النوع</th>
               <th>التصنيف التفصيلي</th>
-              <th>بداية مدين</th>
-              <th>بداية دائن</th>
-              <th>حركة مدين</th>
-              <th>حركة دائن</th>
               <th>تصنيف التدفق</th>
-              <th className="no-print"><ClipboardPaste size={16} /></th>
+              <th>مدين</th>
+              <th>دائن</th>
+              <th>مدين</th>
+              <th>دائن</th>
+              <th>مدين</th>
+              <th>دائن</th>
+              <th>مدين</th>
+              <th>دائن</th>
             </tr>
           </thead>
           <tbody>
-            {visibleAccounts.map((account) => (
+            {visibleRows.map((account) => (
               <tr key={account.id}>
                 <td>
                   <input value={account.accountCode || ""} onChange={(event) => updateAccount(account.id, "accountCode", event.target.value)} className="accounting-input w-24 text-center" placeholder="101" />
@@ -97,6 +143,11 @@ export default function AccountsInput({ accounts, setAccounts }) {
                   </select>
                 </td>
                 <td>
+                  <select value={account.cashFlowTag} onChange={(event) => updateAccount(account.id, "cashFlowTag", event.target.value)} className="accounting-input min-w-[145px]">
+                    {cashFlowTags.map((tag) => <option key={tag.value} value={tag.value}>{tag.label}</option>)}
+                  </select>
+                </td>
+                <td>
                   <input type="number" value={account.openingDebit || 0} onChange={(event) => updateAccount(account.id, "openingDebit", event.target.value)} className="accounting-input number-cell" />
                 </td>
                 <td>
@@ -108,11 +159,10 @@ export default function AccountsInput({ accounts, setAccounts }) {
                 <td>
                   <input type="number" value={account.credit} onChange={(event) => updateAccount(account.id, "credit", event.target.value)} className="accounting-input number-cell" />
                 </td>
-                <td>
-                  <select value={account.cashFlowTag} onChange={(event) => updateAccount(account.id, "cashFlowTag", event.target.value)} className="accounting-input min-w-[145px]">
-                    {cashFlowTags.map((tag) => <option key={tag.value} value={tag.value}>{tag.label}</option>)}
-                  </select>
-                </td>
+                <td className="readonly-money">{amount(account.periodBalanceDebit)}</td>
+                <td className="readonly-money">{amount(account.periodBalanceCredit)}</td>
+                <td className="readonly-money ending-money">{amount(account.endingDebit)}</td>
+                <td className="readonly-money ending-money">{amount(account.endingCredit)}</td>
                 <td className="no-print text-center">
                   <button onClick={() => removeRow(account.id)} className="rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950" title="حذف">
                     <Trash2 size={18} />
@@ -121,6 +171,28 @@ export default function AccountsInput({ accounts, setAccounts }) {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan="5">الإجمالي</td>
+              <td className="readonly-money">{amount(visibleTotals.openingDebit)}</td>
+              <td className="readonly-money">{amount(visibleTotals.openingCredit)}</td>
+              <td className="readonly-money">{amount(visibleTotals.debit)}</td>
+              <td className="readonly-money">{amount(visibleTotals.credit)}</td>
+              <td className="readonly-money">{amount(visibleTotals.periodBalanceDebit)}</td>
+              <td className="readonly-money">{amount(visibleTotals.periodBalanceCredit)}</td>
+              <td className="readonly-money ending-money">{amount(visibleTotals.endingDebit)}</td>
+              <td className="readonly-money ending-money">{amount(visibleTotals.endingCredit)}</td>
+              <td className="no-print"></td>
+            </tr>
+            <tr>
+              <td colSpan="5">الصافي</td>
+              <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.openingDebit - visibleTotals.openingCredit))}</td>
+              <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.debit - visibleTotals.credit))}</td>
+              <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.periodBalanceDebit - visibleTotals.periodBalanceCredit))}</td>
+              <td className="readonly-money ending-money" colSpan="2">{amount(Math.abs(visibleTotals.endingDebit - visibleTotals.endingCredit))}</td>
+              <td className="no-print"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>

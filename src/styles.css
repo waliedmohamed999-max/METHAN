@@ -52,7 +52,7 @@ body {
 
 .accounting-entry-table {
   width: 100%;
-  min-width: 1500px;
+  min-width: 1780px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
@@ -69,6 +69,7 @@ body {
   font-weight: 700;
   padding: 10px 8px;
   white-space: nowrap;
+  text-align: center;
 }
 
 .dark .accounting-entry-table thead th {
@@ -81,6 +82,21 @@ body {
   border-bottom: 1px solid #e5edf5;
   padding: 6px;
   vertical-align: middle;
+}
+
+.accounting-entry-table tfoot td {
+  border-top: 1px solid #94a3b8;
+  border-bottom: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 8px;
+  font-weight: 800;
+}
+
+.dark .accounting-entry-table tfoot td {
+  border-color: #334155;
+  background: #111827;
+  color: #f8fafc;
 }
 
 .dark .accounting-entry-table tbody td {
@@ -130,6 +146,20 @@ body {
   direction: ltr;
   text-align: left;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.readonly-money {
+  min-width: 116px;
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color: #2563eb;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ending-money {
+  color: #0f766e;
 }
 
 .trial-balance-wrap {
