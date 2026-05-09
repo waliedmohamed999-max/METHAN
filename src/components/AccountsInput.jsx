@@ -1,6 +1,6 @@
 import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { accountTypeLabels, accountTypes, cashFlowTags, parseExcelPaste } from "../utils/accounting.js";
+import { accountDetailCategories, accountDetailCategoryLabels, accountTypeLabels, accountTypes, cashFlowTags, defaultDetailCategory, normalizeDetailCategory, parseExcelPaste } from "../utils/accounting.js";
 
 export default function AccountsInput({ accounts, setAccounts }) {
   const [query, setQuery] = useState("");
@@ -14,11 +14,19 @@ export default function AccountsInput({ accounts, setAccounts }) {
   }, [accounts, query, typeFilter]);
 
   function updateAccount(id, key, value) {
-    setAccounts((current) => current.map((account) => (account.id === id ? { ...account, [key]: key === "debit" || key === "credit" ? Number(value) : value } : account)));
+    setAccounts((current) =>
+      current.map((account) => {
+        if (account.id !== id) return account;
+        if (key === "type") {
+          return { ...account, type: value, detailCategory: defaultDetailCategory(value) };
+        }
+        return { ...account, [key]: key === "debit" || key === "credit" ? Number(value) : value };
+      })
+    );
   }
 
   function addRow() {
-    setAccounts((current) => [...current, { id: crypto.randomUUID(), name: "", type: "Assets", debit: 0, credit: 0, cashFlowTag: "operating" }]);
+    setAccounts((current) => [...current, { id: crypto.randomUUID(), name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
   function removeRow(id) {
@@ -39,7 +47,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel بالترتيب: الحساب، النوع، المدين، الدائن.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel بالترتيب: الحساب، النوع، التصنيف التفصيلي، المدين، الدائن.</p>
         </div>
         <button onClick={addRow} className="no-print inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
           <Plus size={18} />
@@ -54,11 +62,12 @@ export default function AccountsInput({ accounts, setAccounts }) {
         </select>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[920px] text-right text-sm">
+        <table className="w-full min-w-[1120px] text-right text-sm">
           <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th className="px-3 py-3">اسم الحساب</th>
               <th className="px-3 py-3">النوع</th>
+              <th className="px-3 py-3">التصنيف التفصيلي</th>
               <th className="px-3 py-3">مدين</th>
               <th className="px-3 py-3">دائن</th>
               <th className="px-3 py-3">تصنيف التدفق</th>
@@ -74,6 +83,11 @@ export default function AccountsInput({ accounts, setAccounts }) {
                 <td className="px-3 py-2">
                   <select value={account.type} onChange={(event) => updateAccount(account.id, "type", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                     {accountTypes.map((type) => <option key={type} value={type}>{accountTypeLabels[type]}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-2">
+                  <select value={normalizeDetailCategory(account.type, account.detailCategory)} onChange={(event) => updateAccount(account.id, "detailCategory", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
+                    {(accountDetailCategories[account.type] || []).map((category) => <option key={category.value} value={category.value}>{accountDetailCategoryLabels[category.value]}</option>)}
                   </select>
                 </td>
                 <td className="px-3 py-2">

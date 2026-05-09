@@ -13,7 +13,7 @@ import StatementTable from "./components/StatementTable.jsx";
 import TrialBalanceTable from "./components/TrialBalanceTable.jsx";
 import ValidationPanel from "./components/ValidationPanel.jsx";
 import { sampleAccounts } from "./data/sampleAccounts.js";
-import { accountTypeLabels, calculateStatements, downloadCsv, money, netAmount } from "./utils/accounting.js";
+import { accountDetailCategoryLabels, accountTypeLabels, calculateStatements, downloadCsv, money, netAmount, normalizeDetailCategory } from "./utils/accounting.js";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -90,6 +90,10 @@ export default function App() {
       ["حقوق الملكية التفصيلية", "المسحوبات", "", ""],
       ...statements.detailedRows.equityDrawings.map((row) => ["حقوق الملكية التفصيلية", "المسحوبات", row.label, row.value])
     ];
+    const categorySectionRows = [
+      ...statements.detailedSections.income.flatMap((section) => section.rows.map((row) => ["قائمة الدخل حسب التصنيف التفصيلي", section.title, row.label, row.value])),
+      ...statements.detailedSections.financialPosition.flatMap((section) => section.rows.map((row) => ["المركز المالي حسب التصنيف التفصيلي", section.title, row.label, row.value]))
+    ];
     const summaryRows = [
       ["القائمة", "البند", "القيمة"],
       ["ميزان المراجعة", "إجمالي المدين", statements.totalDebit],
@@ -101,18 +105,22 @@ export default function App() {
       ["المركز المالي", "الخصوم + حقوق الملكية", statements.liabilitiesAndEquity],
       ["التدفقات النقدية", "صافي التدفق النقدي", statements.cashFlow.netCashFlow],
       [],
-      ["تفاصيل الحسابات", "اسم الحساب", "النوع", "مدين", "دائن", "الرصيد"],
+      ["تفاصيل الحسابات", "اسم الحساب", "النوع", "التصنيف التفصيلي", "مدين", "دائن", "الرصيد"],
       ...statements.rows.map((account) => [
         "تفاصيل الحسابات",
         account.name,
         accountTypeLabels[account.type],
+        accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)],
         account.debit,
         account.credit,
         netAmount(account)
       ]),
       [],
       ["تفاصيل القوائم", "القسم", "البند", "القيمة"],
-      ...sectionRows
+      ...sectionRows,
+      [],
+      ["تفاصيل التصنيفات", "القائمة", "التصنيف التفصيلي", "البند", "القيمة"],
+      ...categorySectionRows
     ];
 
     downloadCsv("mizan-financial-statements.csv", summaryRows);
@@ -274,26 +282,13 @@ function TabContent({ activeTab, statements, profile }) {
     return (
       <DetailedStatement
         title={`قائمة الدخل التفصيلية - ${periodLabel}`}
-        sections={[
-          { title: "الإيرادات حسب الحساب", rows: statements.detailedRows.incomeRevenue, totalLabel: "إجمالي الإيرادات", totalValue: statements.revenueTotal },
-          { title: "المصروفات حسب الحساب", rows: statements.detailedRows.incomeExpenses, totalLabel: "إجمالي المصروفات", totalValue: -statements.expensesTotal },
-          { title: "نتيجة الفترة", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome }
-        ]}
+        sections={statements.detailedSections.income}
       />
     );
   }
 
   if (activeTab === "position") {
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-6 xl:grid-cols-3">
-          <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-          <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
-          <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
-        </div>
-        <SimpleStatement title={`ملخص المركز المالي - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
-      </div>
-    );
+    return <DetailedStatement title={`قائمة المركز المالي التفصيلية - ${periodLabel}`} sections={statements.detailedSections.financialPosition} />;
   }
 
   if (activeTab === "cash") {
@@ -333,18 +328,9 @@ function TabContent({ activeTab, statements, profile }) {
         <TrialBalanceTable statements={statements} />
         <DetailedStatement
           title={`قائمة الدخل التفصيلية - ${periodLabel}`}
-          sections={[
-            { title: "الإيرادات حسب الحساب", rows: statements.detailedRows.incomeRevenue, totalLabel: "إجمالي الإيرادات", totalValue: statements.revenueTotal },
-            { title: "المصروفات حسب الحساب", rows: statements.detailedRows.incomeExpenses, totalLabel: "إجمالي المصروفات", totalValue: -statements.expensesTotal },
-            { title: "نتيجة الفترة", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome }
-          ]}
+          sections={statements.detailedSections.income}
         />
-        <div className="grid gap-6 xl:grid-cols-3">
-          <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-          <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
-          <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
-        </div>
-        <SimpleStatement title={`ملخص المركز المالي - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
+        <DetailedStatement title={`قائمة المركز المالي التفصيلية - ${periodLabel}`} sections={statements.detailedSections.financialPosition} />
         <DetailedStatement
           title={`قائمة التدفقات النقدية التفصيلية - ${periodLabel}`}
           sections={[
@@ -370,16 +356,7 @@ function TabContent({ activeTab, statements, profile }) {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-3">
-        <StatementTable title={`الأصول - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-        <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
-        <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
-      </div>
-      <SimpleStatement title={`ملخص الميزانية العمومية - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
-    </div>
-  );
+  return <DetailedStatement title={`الميزانية العمومية التفصيلية - ${periodLabel}`} sections={statements.detailedSections.financialPosition} />;
 }
 
 function SimpleStatement({ title, rows }) {

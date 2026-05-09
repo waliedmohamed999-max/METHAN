@@ -1,4 +1,4 @@
-import { accountTypeLabels, money } from "../utils/accounting.js";
+import { accountDetailCategoryLabels, accountTypeLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
 
 export default function TrialBalanceTable({ statements }) {
   return (
@@ -10,11 +10,12 @@ export default function TrialBalanceTable({ statements }) {
         </span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-right text-sm">
+        <table className="w-full min-w-[860px] text-right text-sm">
           <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th className="px-3 py-3 font-semibold">الحساب</th>
-              <th className="px-3 py-3 font-semibold">التصنيف</th>
+              <th className="px-3 py-3 font-semibold">التصنيف الرئيسي</th>
+              <th className="px-3 py-3 font-semibold">التصنيف التفصيلي</th>
               <th className="px-3 py-3 font-semibold">مدين</th>
               <th className="px-3 py-3 font-semibold">دائن</th>
             </tr>
@@ -24,6 +25,7 @@ export default function TrialBalanceTable({ statements }) {
               <tr key={row.id} className="text-slate-700 dark:text-slate-200">
                 <td className="px-3 py-3 font-medium">{row.name}</td>
                 <td className="px-3 py-3 text-slate-500 dark:text-slate-400">{accountTypeLabels[row.type]}</td>
+                <td className="px-3 py-3 text-slate-500 dark:text-slate-400">{accountDetailCategoryLabels[normalizeDetailCategory(row.type, row.detailCategory)]}</td>
                 <td className="px-3 py-3">{money(row.debit)}</td>
                 <td className="px-3 py-3">{money(row.credit)}</td>
               </tr>
@@ -31,7 +33,7 @@ export default function TrialBalanceTable({ statements }) {
           </tbody>
           <tfoot>
             <tr className="border-t border-slate-200 bg-slate-50 text-slate-950 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
-              <td className="px-3 py-4 font-bold" colSpan="2">الإجمالي</td>
+              <td className="px-3 py-4 font-bold" colSpan="3">الإجمالي</td>
               <td className="px-3 py-4 font-bold">{money(statements.totalDebit)}</td>
               <td className="px-3 py-4 font-bold">{money(statements.totalCredit)}</td>
             </tr>

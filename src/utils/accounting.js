@@ -8,6 +8,52 @@ export const accountTypeLabels = {
   Expenses: "المصروفات"
 };
 
+export const accountDetailCategories = {
+  Assets: [
+    { value: "currentAssets", label: "أصول متداولة" },
+    { value: "fixedAssets", label: "أصول ثابتة" },
+    { value: "contraAssets", label: "أصول مقابلة" },
+    { value: "otherAssets", label: "أصول أخرى" }
+  ],
+  Liabilities: [
+    { value: "currentLiabilities", label: "خصوم متداولة" },
+    { value: "longTermLiabilities", label: "خصوم طويلة الأجل" },
+    { value: "otherLiabilities", label: "خصوم أخرى" }
+  ],
+  Equity: [
+    { value: "capital", label: "رأس المال" },
+    { value: "retainedEarnings", label: "أرباح مبقاة" },
+    { value: "drawings", label: "مسحوبات" },
+    { value: "currentYearResult", label: "نتيجة العام" }
+  ],
+  Revenue: [
+    { value: "operatingRevenue", label: "إيرادات تشغيلية" },
+    { value: "nonOperatingRevenue", label: "إيرادات غير تشغيلية" },
+    { value: "otherRevenue", label: "إيرادات أخرى" }
+  ],
+  Expenses: [
+    { value: "operatingExpenses", label: "مصروفات تشغيلية" },
+    { value: "administrativeExpenses", label: "مصروفات إدارية" },
+    { value: "sellingExpenses", label: "مصروفات بيعية" },
+    { value: "financeExpenses", label: "مصروفات تمويلية" },
+    { value: "depreciationExpenses", label: "مصروفات إهلاك" },
+    { value: "otherExpenses", label: "مصروفات أخرى" }
+  ]
+};
+
+export const accountDetailCategoryLabels = Object.fromEntries(
+  Object.values(accountDetailCategories).flat().map((category) => [category.value, category.label])
+);
+
+export function defaultDetailCategory(type) {
+  return accountDetailCategories[type]?.[0]?.value || "";
+}
+
+export function normalizeDetailCategory(type, detailCategory) {
+  const allowed = accountDetailCategories[type] || [];
+  return allowed.some((category) => category.value === detailCategory) ? detailCategory : defaultDetailCategory(type);
+}
+
 export const cashFlowTags = [
   { value: "operating", label: "تشغيلي" },
   { value: "depreciation", label: "إهلاك" },
@@ -42,11 +88,27 @@ export function netAmount(account) {
 }
 
 export function calculateStatements(accounts) {
-  const rows = accounts.filter((account) => account.name.trim());
+  const rows = accounts
+    .filter((account) => account.name.trim())
+    .map((account) => ({
+      ...account,
+      detailCategory: normalizeDetailCategory(account.type, account.detailCategory)
+    }));
   const totalDebit = rows.reduce((sum, account) => sum + normalizeNumber(account.debit), 0);
   const totalCredit = rows.reduce((sum, account) => sum + normalizeNumber(account.credit), 0);
   const byType = Object.fromEntries(accountTypes.map((type) => [type, rows.filter((account) => account.type === type)]));
+  const byDetail = Object.fromEntries(
+    Object.entries(accountDetailCategories).flatMap(([type, categories]) =>
+      categories.map((category) => [
+        category.value,
+        rows.filter((account) => account.type === type && account.detailCategory === category.value)
+      ])
+    )
+  );
   const totals = Object.fromEntries(accountTypes.map((type) => [type, byType[type].reduce((sum, account) => sum + netAmount(account), 0)]));
+  const detailTotals = Object.fromEntries(
+    Object.keys(byDetail).map((detailCategory) => [detailCategory, byDetail[detailCategory].reduce((sum, account) => sum + netAmount(account), 0)])
+  );
 
   const revenueTotal = totals.Revenue;
   const expensesTotal = totals.Expenses;
@@ -109,6 +171,44 @@ export function calculateStatements(accounts) {
         account
       }))
   };
+  const detailedSections = {
+    income: [
+      ...accountDetailCategories.Revenue.map((category) => ({
+        title: category.label,
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        totalLabel: `إجمالي ${category.label}`,
+        totalValue: detailTotals[category.value]
+      })),
+      ...accountDetailCategories.Expenses.map((category) => ({
+        title: category.label,
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+        totalLabel: `إجمالي ${category.label}`,
+        totalValue: -Math.abs(detailTotals[category.value])
+      })),
+      { title: "نتيجة الفترة", rows: [{ id: "net-income", label: "صافي الربح", value: netIncome }], totalLabel: "صافي الربح", totalValue: netIncome }
+    ],
+    financialPosition: [
+      ...accountDetailCategories.Assets.map((category) => ({
+        title: category.label,
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        totalLabel: `إجمالي ${category.label}`,
+        totalValue: detailTotals[category.value]
+      })),
+      ...accountDetailCategories.Liabilities.map((category) => ({
+        title: category.label,
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        totalLabel: `إجمالي ${category.label}`,
+        totalValue: detailTotals[category.value]
+      })),
+      ...accountDetailCategories.Equity.map((category) => ({
+        title: category.label,
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        totalLabel: `إجمالي ${category.label}`,
+        totalValue: detailTotals[category.value]
+      })),
+      { title: "ملخص المعادلة", rows: [{ id: "assets-total", label: "إجمالي الأصول", value: totals.Assets }, { id: "liabilities-equity-total", label: "إجمالي الخصوم وحقوق الملكية", value: liabilitiesAndEquity }], totalLabel: "فرق المعادلة", totalValue: totals.Assets - liabilitiesAndEquity }
+    ]
+  };
 
   return {
     rows,
@@ -116,7 +216,9 @@ export function calculateStatements(accounts) {
     totalCredit,
     balancedTrial: Math.abs(totalDebit - totalCredit) < 0.01,
     byType,
+    byDetail,
     totals,
+    detailTotals,
     revenueTotal,
     expensesTotal,
     netIncome,
@@ -126,6 +228,7 @@ export function calculateStatements(accounts) {
     liabilitiesAndEquity,
     financialPositionBalanced: Math.abs(totals.Assets - liabilitiesAndEquity) < 0.01,
     detailedRows,
+    detailedSections,
     cashFlow: {
       depreciation,
       receivablesChange,
@@ -153,15 +256,20 @@ export function parseExcelPaste(text) {
       );
     })
     .map((line) => {
-      const [name = "", type = "Assets", debit = "0", credit = "0"] = line.split(/\t|,/);
+      const [name = "", type = "Assets", maybeDetailOrDebit = "0", maybeDebitOrCredit = "0", maybeCredit = "0", maybeCashFlowTag = "operating"] = line.split(/\t|,/);
       const normalizedType = accountTypes.includes(type.trim()) ? type.trim() : "Assets";
+      const hasDetailColumn = Object.values(accountDetailCategories).flat().some((category) => category.value === maybeDetailOrDebit.trim() || category.label === maybeDetailOrDebit.trim());
+      const detailCategory = hasDetailColumn
+        ? Object.values(accountDetailCategories).flat().find((category) => category.value === maybeDetailOrDebit.trim() || category.label === maybeDetailOrDebit.trim()).value
+        : defaultDetailCategory(normalizedType);
       return {
         id: crypto.randomUUID(),
         name: name.trim(),
         type: normalizedType,
-        debit: normalizeNumber(debit),
-        credit: normalizeNumber(credit),
-        cashFlowTag: "operating"
+        detailCategory,
+        debit: normalizeNumber(hasDetailColumn ? maybeDebitOrCredit : maybeDetailOrDebit),
+        credit: normalizeNumber(hasDetailColumn ? maybeCredit : maybeDebitOrCredit),
+        cashFlowTag: hasDetailColumn ? maybeCashFlowTag.trim() || "operating" : "operating"
       };
     });
 }

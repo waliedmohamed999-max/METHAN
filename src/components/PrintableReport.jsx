@@ -1,4 +1,4 @@
-import { accountTypeLabels, money } from "../utils/accounting.js";
+import { accountDetailCategoryLabels, accountTypeLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
 
 function ReportTable({ title, rows, footerLabel, footerValue }) {
   return (
@@ -72,6 +72,7 @@ function AccountsTable({ title, rows, totalLabel, totalValue }) {
           <tr>
             <th>الحساب</th>
             <th>النوع</th>
+            <th>التصنيف التفصيلي</th>
             <th>مدين</th>
             <th>دائن</th>
           </tr>
@@ -81,6 +82,7 @@ function AccountsTable({ title, rows, totalLabel, totalValue }) {
             <tr key={account.id}>
               <td>{account.name}</td>
               <td>{accountTypeLabels[account.type]}</td>
+              <td>{accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)]}</td>
               <td>{money(account.debit)}</td>
               <td>{money(account.credit)}</td>
             </tr>
@@ -88,7 +90,7 @@ function AccountsTable({ title, rows, totalLabel, totalValue }) {
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan="2">{totalLabel}</td>
+            <td colSpan="3">{totalLabel}</td>
             <td colSpan="2">{money(totalValue)}</td>
           </tr>
         </tfoot>
@@ -139,37 +141,9 @@ export default function PrintableReport({ profile, statements }) {
 
       <AccountsTable title="ميزان المراجعة" rows={statements.rows} totalLabel="إجمالي الميزان" totalValue={statements.totalDebit} />
 
-      <section className="pdf-two-columns">
-        <AccountsTable title="تفصيل الإيرادات" rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
-        <AccountsTable title="تفصيل المصروفات" rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
-      </section>
+      <DetailedReportTable title="قائمة الدخل التفصيلية" sections={statements.detailedSections.income} />
 
-      <ReportTable
-        title="ملخص قائمة الدخل"
-        rows={[
-          ["إجمالي الإيرادات", statements.revenueTotal],
-          ["إجمالي المصروفات", -statements.expensesTotal]
-        ]}
-        footerLabel="صافي الربح"
-        footerValue={statements.netIncome}
-      />
-
-      <section className="pdf-three-columns">
-        <AccountsTable title="الأصول" rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-        <AccountsTable title="الخصوم" rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
-        <AccountsTable title="حقوق الملكية" rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
-      </section>
-
-      <ReportTable
-        title="ملخص المركز المالي"
-        rows={[
-          ["إجمالي الأصول", statements.totals.Assets],
-          ["إجمالي الخصوم", statements.totals.Liabilities],
-          ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity]
-        ]}
-        footerLabel="إجمالي الخصوم وحقوق الملكية"
-        footerValue={statements.liabilitiesAndEquity}
-      />
+      <DetailedReportTable title="قائمة المركز المالي التفصيلية" sections={statements.detailedSections.financialPosition} />
 
       <DetailedReportTable
         title="قائمة التدفقات النقدية التفصيلية - الطريقة غير المباشرة"
