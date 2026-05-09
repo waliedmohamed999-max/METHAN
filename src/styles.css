@@ -406,8 +406,8 @@ body {
 
 @media print {
   @page {
-    size: A4;
-    margin: 12mm;
+    size: A4 landscape;
+    margin: 8mm;
   }
 
   html,
@@ -440,8 +440,8 @@ body {
     width: 100%;
     color: #111827;
     font-family: "Segoe UI", Arial, sans-serif;
-    font-size: 11px;
-    line-height: 1.55;
+    font-size: 10px;
+    line-height: 1.45;
   }
 
   .pdf-cover {
@@ -449,9 +449,9 @@ body {
     align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
-    padding-bottom: 14px;
+    padding-bottom: 10px;
     border-bottom: 2px solid #0f766e;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   .pdf-kicker {
@@ -462,7 +462,7 @@ body {
 
   .pdf-cover h1 {
     margin: 0;
-    font-size: 24px;
+    font-size: 20px;
     color: #0f172a;
   }
 
@@ -493,7 +493,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .pdf-summary div {
@@ -517,7 +517,7 @@ body {
 
   .pdf-section {
     break-inside: avoid;
-    margin: 0 0 12px;
+    margin: 0 0 10px;
   }
 
   .pdf-section h2 {
@@ -543,7 +543,7 @@ body {
   .pdf-table th,
   .pdf-table td {
     border: 1px solid #d8dee9;
-    padding: 6px 7px;
+    padding: 4px 5px;
     vertical-align: top;
     overflow-wrap: anywhere;
   }
@@ -568,6 +568,58 @@ body {
 
   .pdf-detail-table {
     margin-bottom: 8px;
+  }
+
+  .pdf-trial-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .pdf-trial-table {
+    table-layout: fixed;
+    font-size: 7px;
+    line-height: 1.25;
+  }
+
+  .pdf-trial-table th,
+  .pdf-trial-table td {
+    padding: 3px 3px;
+  }
+
+  .pdf-trial-table .pdf-code-col {
+    width: 5%;
+  }
+
+  .pdf-trial-table .pdf-name-col {
+    width: 18%;
+  }
+
+  .pdf-trial-table .pdf-category-col {
+    width: 12%;
+  }
+
+  .pdf-trial-table .pdf-money-col {
+    width: 8.125%;
+  }
+
+  .pdf-trial-table td:nth-child(n + 4),
+  .pdf-trial-table th:nth-child(n + 4) {
+    direction: ltr;
+    text-align: left;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+
+  .pdf-trial-table td:nth-child(1),
+  .pdf-trial-table th:nth-child(1) {
+    text-align: center;
+  }
+
+  .pdf-trial-table td:nth-child(2),
+  .pdf-trial-table td:nth-child(3) {
+    direction: rtl;
+    text-align: right;
+    white-space: normal;
   }
 
   .pdf-detail-table thead th {

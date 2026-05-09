@@ -69,9 +69,15 @@ function DetailedReportTable({ title, sections }) {
 
 function AccountsTable({ title, rows, totals }) {
   return (
-    <section className="pdf-section">
+    <section className="pdf-section pdf-trial-section">
       <h2>{title}</h2>
-      <table className="pdf-table">
+      <table className="pdf-table pdf-trial-table">
+        <colgroup>
+          <col className="pdf-code-col" />
+          <col className="pdf-name-col" />
+          <col className="pdf-category-col" />
+          <col span="8" className="pdf-money-col" />
+        </colgroup>
         <thead>
           <tr>
             <th>رقم</th>
