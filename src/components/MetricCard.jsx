@@ -7,10 +7,10 @@ export default function MetricCard({ label, value, tone = "slate", detail }) {
   };
 
   return (
-    <div className={`print-card rounded-lg border p-4 shadow-panel ${tones[tone]}`}>
-      <p className="text-sm opacity-70">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-normal">{value}</p>
-      {detail ? <p className="mt-2 text-xs opacity-70">{detail}</p> : null}
+    <div className={`print-card metric-card ${tones[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-60">{label}</p>
+      <p className="mt-2 text-[22px] font-black tracking-normal">{value}</p>
+      {detail ? <p className="mt-2 truncate text-xs opacity-65" title={detail}>{detail}</p> : null}
     </div>
   );
 }

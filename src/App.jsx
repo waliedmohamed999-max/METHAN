@@ -176,7 +176,7 @@ export default function App() {
     <main className="min-h-screen bg-[#eef2f6] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <div className="screen-only">
       <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 py-3 lg:px-6">
+        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-between gap-4 px-4 py-3 lg:px-6">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-md bg-teal-600 text-white shadow-sm">
               <BarChart3 size={24} />
@@ -186,20 +186,20 @@ export default function App() {
               <p className="text-sm text-slate-500 dark:text-slate-400">لوحة تحويل ميزان المراجعة إلى قوائم مالية</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => setDarkMode((value) => !value)} className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">
+          <div className="toolbar-actions">
+            <button onClick={() => setDarkMode((value) => !value)} className="toolbar-button">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
               {darkMode ? "Light" : "Dark"}
             </button>
-            <button onClick={exportExcel} className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">
+            <button onClick={exportExcel} className="toolbar-button">
               <FileSpreadsheet size={18} />
               Excel
             </button>
-            <button onClick={exportBackup} className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">
+            <button onClick={exportBackup} className="toolbar-button">
               <Download size={18} />
               Backup
             </button>
-            <button onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+            <button onClick={() => window.print()} className="toolbar-button-primary">
               <Printer size={18} />
               PDF
             </button>
@@ -207,7 +207,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1600px] gap-5 px-4 py-5 xl:grid-cols-[1fr_330px] lg:px-6">
+      <div className="mx-auto grid max-w-[1680px] gap-5 px-4 py-5 2xl:grid-cols-[1fr_320px] lg:px-6">
         <div className="space-y-5">
           <CompanySettings profile={profile} setProfile={setProfile} onReset={resetData} onImportBackup={importBackup} />
 
@@ -220,28 +220,39 @@ export default function App() {
 
           <AccountsInput accounts={accounts} setAccounts={setAccounts} />
 
-          <nav className="no-print sticky top-[73px] z-30 flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 p-1.5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-            {tabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 rounded-md px-4 py-2 text-sm font-semibold transition ${activeTab === tab.id ? "bg-teal-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+          <section className="workspace-panel no-print">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-slate-950 dark:text-white">القوائم والتقارير</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">اختر التقرير المطلوب بعد إدخال ميزان المراجعة</p>
+              </div>
+              <span className={`rounded-md px-3 py-1.5 text-xs font-bold ${statements.balancedTrial ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200" : "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-200"}`}>
+                {statements.balancedTrial ? "الميزان متوازن" : "الميزان غير متوازن"}
+              </span>
+            </div>
+            <nav className="report-tabs">
+              {tabs.map((tab) => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={activeTab === tab.id ? "active" : ""}>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </section>
 
           <TabContent activeTab={activeTab} statements={statements} profile={profile} />
         </div>
 
-        <aside className="space-y-5 xl:sticky xl:top-[92px] xl:self-start">
+        <aside className="space-y-4 2xl:sticky 2xl:top-[92px] 2xl:self-start">
           <ValidationPanel statements={statements} />
           <RatiosPanel statements={statements} />
-          <section className="print-card rounded-lg border border-slate-200 bg-white p-5 shadow-panel dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="text-lg font-bold">تحليل سريع</h2>
-            <div className="mt-4 h-64">
+          <section className="print-card workspace-panel">
+            <h2 className="text-base font-black">تحليل سريع</h2>
+            <div className="mt-3 h-56">
               <Pie data={chartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { usePointStyle: true } } } }} />
             </div>
           </section>
-          <section className="print-card rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-panel dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="text-lg font-bold">جاهزية التوسع</h2>
+          <section className="print-card workspace-panel text-sm">
+            <h2 className="text-base font-black">جاهزية التوسع</h2>
             <div className="mt-4 space-y-3 text-slate-600 dark:text-slate-300">
               <p>المنطق المحاسبي مفصول في طبقة مستقلة، ما يسهل نقله لاحقًا إلى API.</p>
               <p>كل حساب يحمل تصنيفًا للتدفقات النقدية، ويمكن تحويله لاحقًا إلى دليل حسابات كامل.</p>
