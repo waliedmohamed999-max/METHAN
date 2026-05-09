@@ -173,12 +173,12 @@ export default function App() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <main className="min-h-screen bg-[#eef2f6] text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <div className="screen-only">
-      <header className="no-print border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 lg:px-6">
+      <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 py-3 lg:px-6">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-lg bg-teal-600 text-white">
+            <div className="grid h-10 w-10 place-items-center rounded-md bg-teal-600 text-white shadow-sm">
               <BarChart3 size={24} />
             </div>
             <div>
@@ -207,8 +207,8 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1fr_340px] lg:px-6">
-        <div className="space-y-6">
+      <div className="mx-auto grid max-w-[1600px] gap-5 px-4 py-5 xl:grid-cols-[1fr_330px] lg:px-6">
+        <div className="space-y-5">
           <CompanySettings profile={profile} setProfile={setProfile} onReset={resetData} onImportBackup={importBackup} />
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -220,9 +220,9 @@ export default function App() {
 
           <AccountsInput accounts={accounts} setAccounts={setAccounts} />
 
-          <nav className="no-print flex gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
+          <nav className="no-print sticky top-[73px] z-30 flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 p-1.5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
             {tabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 rounded-md px-4 py-2 text-sm font-semibold ${activeTab === tab.id ? "bg-teal-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 rounded-md px-4 py-2 text-sm font-semibold transition ${activeTab === tab.id ? "bg-teal-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
                 {tab.label}
               </button>
             ))}
@@ -231,7 +231,7 @@ export default function App() {
           <TabContent activeTab={activeTab} statements={statements} profile={profile} />
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-5 xl:sticky xl:top-[92px] xl:self-start">
           <ValidationPanel statements={statements} />
           <RatiosPanel statements={statements} />
           <section className="print-card rounded-lg border border-slate-200 bg-white p-5 shadow-panel dark:border-slate-800 dark:bg-slate-900">
@@ -254,7 +254,7 @@ export default function App() {
           <AccountingNotes />
         </aside>
       </div>
-      <div className="no-print mx-auto max-w-7xl px-4 pb-8 lg:px-6">
+      <div className="no-print mx-auto max-w-[1600px] px-4 pb-8 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-panel dark:border-slate-800 dark:bg-slate-900">
           <div>
             <h2 className="text-base font-bold text-slate-950 dark:text-white">تصدير التقرير المالي</h2>

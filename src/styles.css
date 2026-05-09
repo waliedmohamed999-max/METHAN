@@ -24,6 +24,195 @@ body {
   background: #0f172a;
 }
 
+.accounting-panel {
+  border: 1px solid #d8e1eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: 0 14px 45px rgba(15, 23, 42, 0.06);
+}
+
+.dark .accounting-panel {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+
+.accounting-table-wrap {
+  overflow: auto;
+  border: 1px solid #d8e1eb;
+  border-radius: 8px;
+  background: #ffffff;
+  max-height: 620px;
+}
+
+.dark .accounting-table-wrap {
+  border-color: #1e293b;
+  background: #020617;
+}
+
+.accounting-entry-table {
+  width: 100%;
+  min-width: 1500px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  text-align: right;
+}
+
+.accounting-entry-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f1f5f9;
+  border-bottom: 1px solid #cbd5e1;
+  color: #475569;
+  font-weight: 700;
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+
+.dark .accounting-entry-table thead th {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.accounting-entry-table tbody td {
+  border-bottom: 1px solid #e5edf5;
+  padding: 6px;
+  vertical-align: middle;
+}
+
+.dark .accounting-entry-table tbody td {
+  border-color: #1e293b;
+}
+
+.accounting-entry-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.dark .accounting-entry-table tbody tr:nth-child(even) {
+  background: #0b1220;
+}
+
+.accounting-entry-table tbody tr:hover {
+  background: #ecfeff;
+}
+
+.dark .accounting-entry-table tbody tr:hover {
+  background: #083344;
+}
+
+.accounting-input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.accounting-input:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
+}
+
+.dark .accounting-input {
+  border-color: #334155;
+  background: #020617;
+  color: #f8fafc;
+}
+
+.number-cell {
+  min-width: 116px;
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.trial-balance-wrap {
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.dark .trial-balance-wrap {
+  border-color: #334155;
+  background: #020617;
+}
+
+.trial-balance-table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.trial-balance-table th,
+.trial-balance-table td {
+  border: 1px solid #94a3b8;
+  padding: 6px 7px;
+  vertical-align: middle;
+}
+
+.trial-balance-table thead th {
+  background: #edf2f7;
+  color: #0f172a;
+  font-weight: 800;
+  text-align: center;
+}
+
+.dark .trial-balance-table thead th {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.trial-balance-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.dark .trial-balance-table tbody tr:nth-child(even) {
+  background: #0b1220;
+}
+
+.trial-balance-table tfoot td {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.dark .trial-balance-table tfoot td {
+  background: #111827;
+  color: #f8fafc;
+}
+
+.trial-balance-table .code-cell {
+  width: 70px;
+  text-align: center;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.trial-balance-table .name-cell {
+  min-width: 180px;
+  font-weight: 700;
+}
+
+.trial-balance-table .money-cell {
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: nowrap;
+}
+
+.trial-balance-table .balance-cell {
+  color: #2563eb;
+  font-weight: 700;
+}
+
 @media print {
   @page {
     size: A4;
