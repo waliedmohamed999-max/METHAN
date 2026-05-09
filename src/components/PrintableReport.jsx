@@ -1,0 +1,160 @@
+import { accountTypeLabels, money } from "../utils/accounting.js";
+
+function ReportTable({ title, rows, footerLabel, footerValue }) {
+  return (
+    <section className="pdf-section">
+      <h2>{title}</h2>
+      <table className="pdf-table">
+        <tbody>
+          {rows.map(([label, value]) => (
+            <tr key={label}>
+              <td>{label}</td>
+              <td>{money(value)}</td>
+            </tr>
+          ))}
+        </tbody>
+        {footerLabel ? (
+          <tfoot>
+            <tr>
+              <td>{footerLabel}</td>
+              <td>{money(footerValue)}</td>
+            </tr>
+          </tfoot>
+        ) : null}
+      </table>
+    </section>
+  );
+}
+
+function AccountsTable({ title, rows, totalLabel, totalValue }) {
+  return (
+    <section className="pdf-section">
+      <h2>{title}</h2>
+      <table className="pdf-table">
+        <thead>
+          <tr>
+            <th>الحساب</th>
+            <th>النوع</th>
+            <th>مدين</th>
+            <th>دائن</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((account) => (
+            <tr key={account.id}>
+              <td>{account.name}</td>
+              <td>{accountTypeLabels[account.type]}</td>
+              <td>{money(account.debit)}</td>
+              <td>{money(account.credit)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan="2">{totalLabel}</td>
+            <td colSpan="2">{money(totalValue)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  );
+}
+
+export default function PrintableReport({ profile, statements }) {
+  const period = `${profile.periodStart} إلى ${profile.periodEnd}`;
+  const generatedAt = new Intl.DateTimeFormat("ar-SA", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date());
+
+  return (
+    <article className="pdf-report" dir="rtl">
+      <header className="pdf-cover">
+        <div>
+          <p className="pdf-kicker">تقرير القوائم المالية</p>
+          <h1>{profile.companyName}</h1>
+          <p>الفترة المالية: {period}</p>
+        </div>
+        <div className="pdf-stamp">
+          <strong>ميزان</strong>
+          <span>تقرير آلي</span>
+        </div>
+      </header>
+
+      <section className="pdf-summary">
+        <div>
+          <span>إجمالي المدين</span>
+          <strong>{money(statements.totalDebit)}</strong>
+        </div>
+        <div>
+          <span>إجمالي الدائن</span>
+          <strong>{money(statements.totalCredit)}</strong>
+        </div>
+        <div>
+          <span>صافي الربح</span>
+          <strong>{money(statements.netIncome)}</strong>
+        </div>
+        <div>
+          <span>الأصول</span>
+          <strong>{money(statements.totals.Assets)}</strong>
+        </div>
+      </section>
+
+      <AccountsTable title="ميزان المراجعة" rows={statements.rows} totalLabel="إجمالي الميزان" totalValue={statements.totalDebit} />
+
+      <ReportTable
+        title="قائمة الدخل"
+        rows={[
+          ["إجمالي الإيرادات", statements.revenueTotal],
+          ["إجمالي المصروفات", -statements.expensesTotal]
+        ]}
+        footerLabel="صافي الربح"
+        footerValue={statements.netIncome}
+      />
+
+      <section className="pdf-two-columns">
+        <AccountsTable title="الأصول" rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
+        <ReportTable
+          title="الخصوم وحقوق الملكية"
+          rows={[
+            ["إجمالي الخصوم", statements.totals.Liabilities],
+            ["حقوق الملكية آخر المدة", statements.endingEquity]
+          ]}
+          footerLabel="إجمالي الخصوم وحقوق الملكية"
+          footerValue={statements.liabilitiesAndEquity}
+        />
+      </section>
+
+      <ReportTable
+        title="قائمة التدفقات النقدية - الطريقة غير المباشرة"
+        rows={[
+          ["صافي الربح", statements.netIncome],
+          ["إضافة الإهلاك", statements.cashFlow.depreciation],
+          ["التغير في الذمم المدينة", statements.cashFlow.receivablesChange],
+          ["التغير في الذمم الدائنة", statements.cashFlow.payablesChange],
+          ["صافي التدفق التشغيلي", statements.cashFlow.operatingCashFlow],
+          ["التدفقات الاستثمارية", statements.cashFlow.investingCashFlow],
+          ["التدفقات التمويلية", statements.cashFlow.financingCashFlow]
+        ]}
+        footerLabel="صافي التدفق النقدي"
+        footerValue={statements.cashFlow.netCashFlow}
+      />
+
+      <ReportTable
+        title="قائمة التغير في حقوق الملكية"
+        rows={[
+          ["رأس المال أول المدة", statements.beginningCapital],
+          ["صافي الربح", statements.netIncome],
+          ["المسحوبات", -statements.drawings]
+        ]}
+        footerLabel="رأس المال آخر المدة"
+        footerValue={statements.endingEquity}
+      />
+
+      <footer className="pdf-footer">
+        <span>تم إنشاء التقرير في {generatedAt}</span>
+        <span>{statements.balancedTrial ? "ميزان المراجعة متوازن" : "ميزان المراجعة غير متوازن"}</span>
+      </footer>
+    </article>
+  );
+}
