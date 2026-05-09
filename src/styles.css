@@ -145,6 +145,46 @@ body {
   color: #ffffff;
 }
 
+.top-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr) minmax(260px, 0.8fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.top-insights-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compact-chart,
+.compact-info {
+  min-height: 100%;
+}
+
+.compact-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 1280px) {
+  .top-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .top-insights-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .top-insights-main {
+    grid-template-columns: 1fr;
+  }
+}
+
 .accounting-panel {
   border: 1px solid #d8e1eb;
   border-radius: 8px;

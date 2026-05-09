@@ -3,7 +3,6 @@ import { BarChart3, Download, FileSpreadsheet, Moon, Printer, Sun } from "lucide
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js";
 import { Pie } from "react-chartjs-2";
 import AccountsInput from "./components/AccountsInput.jsx";
-import AccountingNotes from "./components/AccountingNotes.jsx";
 import CompanySettings from "./components/CompanySettings.jsx";
 import DetailedStatement from "./components/DetailedStatement.jsx";
 import MetricCard from "./components/MetricCard.jsx";
@@ -207,7 +206,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1680px] gap-5 px-4 py-5 2xl:grid-cols-[1fr_320px] lg:px-6">
+      <div className="mx-auto max-w-[1680px] space-y-5 px-4 py-5 lg:px-6">
         <div className="space-y-5">
           <CompanySettings profile={profile} setProfile={setProfile} onReset={resetData} onImportBackup={importBackup} />
 
@@ -216,6 +215,29 @@ export default function App() {
             <MetricCard label="صافي الربح" value={money(statements.netIncome)} tone={statements.netIncome >= 0 ? "green" : "red"} detail="الإيرادات ناقص المصروفات" />
             <MetricCard label="الأصول" value={money(statements.totals.Assets)} detail="إجمالي أرصدة الأصول" />
             <MetricCard label="معادلة المركز المالي" value={statements.financialPositionBalanced ? "مطابقة" : "تحتاج مراجعة"} tone={statements.financialPositionBalanced ? "green" : "amber"} detail="الأصول = الخصوم + حقوق الملكية" />
+          </section>
+
+          <section className="top-insights no-print">
+            <div className="top-insights-main">
+              <ValidationPanel statements={statements} />
+              <RatiosPanel statements={statements} />
+            </div>
+            <section className="print-card workspace-panel compact-chart">
+              <h2 className="text-base font-black">تحليل سريع</h2>
+              <div className="mt-3 h-44">
+                <Pie data={chartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { usePointStyle: true } } } }} />
+              </div>
+            </section>
+            <section className="print-card workspace-panel compact-info text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-black">جاهزية التوسع</h2>
+                <button onClick={() => setAccounts(sampleAccounts)} className="no-print inline-flex shrink-0 items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-xs font-bold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+                  <Download size={15} />
+                  بيانات تجريبية
+                </button>
+              </div>
+              <p className="mt-3 text-slate-600 dark:text-slate-300">المنطق المحاسبي مفصول وجاهز للتحويل لاحقًا إلى API ودليل حسابات كامل.</p>
+            </section>
           </section>
 
           <AccountsInput accounts={accounts} setAccounts={setAccounts} />
@@ -241,29 +263,6 @@ export default function App() {
 
           <TabContent activeTab={activeTab} statements={statements} profile={profile} />
         </div>
-
-        <aside className="space-y-4 2xl:sticky 2xl:top-[92px] 2xl:self-start">
-          <ValidationPanel statements={statements} />
-          <RatiosPanel statements={statements} />
-          <section className="print-card workspace-panel">
-            <h2 className="text-base font-black">تحليل سريع</h2>
-            <div className="mt-3 h-56">
-              <Pie data={chartData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { usePointStyle: true } } } }} />
-            </div>
-          </section>
-          <section className="print-card workspace-panel text-sm">
-            <h2 className="text-base font-black">جاهزية التوسع</h2>
-            <div className="mt-4 space-y-3 text-slate-600 dark:text-slate-300">
-              <p>المنطق المحاسبي مفصول في طبقة مستقلة، ما يسهل نقله لاحقًا إلى API.</p>
-              <p>كل حساب يحمل تصنيفًا للتدفقات النقدية، ويمكن تحويله لاحقًا إلى دليل حسابات كامل.</p>
-              <button onClick={() => setAccounts(sampleAccounts)} className="no-print inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
-                <Download size={16} />
-                استعادة بيانات تجريبية
-              </button>
-            </div>
-          </section>
-          <AccountingNotes />
-        </aside>
       </div>
       <div className="no-print mx-auto max-w-[1600px] px-4 pb-8 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-panel dark:border-slate-800 dark:bg-slate-900">
