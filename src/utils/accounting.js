@@ -87,13 +87,40 @@ export function netAmount(account) {
   return credit - debit;
 }
 
+export function splitDebitCredit(value) {
+  const amount = normalizeNumber(value);
+  return {
+    debit: amount > 0 ? amount : 0,
+    credit: amount < 0 ? Math.abs(amount) : 0
+  };
+}
+
+export function accountStatementAmount(account) {
+  const openingDebit = normalizeNumber(account.openingDebit);
+  const openingCredit = normalizeNumber(account.openingCredit);
+  const periodDebit = normalizeNumber(account.debit);
+  const periodCredit = normalizeNumber(account.credit);
+
+  if (account.type === "Assets") return openingDebit - openingCredit + periodDebit - periodCredit;
+  if (account.type === "Expenses") return periodDebit - periodCredit;
+  if (account.type === "Revenue") return periodCredit - periodDebit;
+  return openingCredit - openingDebit + periodCredit - periodDebit;
+}
+
 export function calculateStatements(accounts) {
   const rows = accounts
     .filter((account) => account.name.trim())
     .map((account) => ({
       ...account,
+      accountCode: account.accountCode || "",
+      openingDebit: normalizeNumber(account.openingDebit),
+      openingCredit: normalizeNumber(account.openingCredit),
+      debit: normalizeNumber(account.debit),
+      credit: normalizeNumber(account.credit),
       detailCategory: normalizeDetailCategory(account.type, account.detailCategory)
     }));
+  const totalOpeningDebit = rows.reduce((sum, account) => sum + normalizeNumber(account.openingDebit), 0);
+  const totalOpeningCredit = rows.reduce((sum, account) => sum + normalizeNumber(account.openingCredit), 0);
   const totalDebit = rows.reduce((sum, account) => sum + normalizeNumber(account.debit), 0);
   const totalCredit = rows.reduce((sum, account) => sum + normalizeNumber(account.credit), 0);
   const byType = Object.fromEntries(accountTypes.map((type) => [type, rows.filter((account) => account.type === type)]));
@@ -105,9 +132,27 @@ export function calculateStatements(accounts) {
       ])
     )
   );
-  const totals = Object.fromEntries(accountTypes.map((type) => [type, byType[type].reduce((sum, account) => sum + netAmount(account), 0)]));
+  const trialBalanceRows = rows.map((account) => {
+    const periodNet = normalizeNumber(account.debit) - normalizeNumber(account.credit);
+    const openingNet = normalizeNumber(account.openingDebit) - normalizeNumber(account.openingCredit);
+    const periodBalance = splitDebitCredit(periodNet);
+    const endingBalance = splitDebitCredit(openingNet + periodNet);
+
+    return {
+      ...account,
+      periodBalanceDebit: periodBalance.debit,
+      periodBalanceCredit: periodBalance.credit,
+      endingDebit: endingBalance.debit,
+      endingCredit: endingBalance.credit
+    };
+  });
+  const totalPeriodBalanceDebit = trialBalanceRows.reduce((sum, account) => sum + account.periodBalanceDebit, 0);
+  const totalPeriodBalanceCredit = trialBalanceRows.reduce((sum, account) => sum + account.periodBalanceCredit, 0);
+  const totalEndingDebit = trialBalanceRows.reduce((sum, account) => sum + account.endingDebit, 0);
+  const totalEndingCredit = trialBalanceRows.reduce((sum, account) => sum + account.endingCredit, 0);
+  const totals = Object.fromEntries(accountTypes.map((type) => [type, byType[type].reduce((sum, account) => sum + accountStatementAmount(account), 0)]));
   const detailTotals = Object.fromEntries(
-    Object.keys(byDetail).map((detailCategory) => [detailCategory, byDetail[detailCategory].reduce((sum, account) => sum + netAmount(account), 0)])
+    Object.keys(byDetail).map((detailCategory) => [detailCategory, byDetail[detailCategory].reduce((sum, account) => sum + accountStatementAmount(account), 0)])
   );
 
   const revenueTotal = totals.Revenue;
@@ -115,59 +160,59 @@ export function calculateStatements(accounts) {
   const netIncome = revenueTotal - expensesTotal;
   const drawings = byType.Equity
     .filter((account) => account.cashFlowTag === "drawings" || account.name.includes("مسحوبات"))
-    .reduce((sum, account) => sum + Math.abs(netAmount(account)), 0);
+    .reduce((sum, account) => sum + Math.abs(accountStatementAmount(account)), 0);
   const beginningCapital = byType.Equity
     .filter((account) => account.cashFlowTag !== "drawings")
-    .reduce((sum, account) => sum + netAmount(account), 0);
+    .reduce((sum, account) => sum + accountStatementAmount(account), 0);
   const endingEquity = beginningCapital + netIncome - drawings;
   const liabilitiesAndEquity = totals.Liabilities + endingEquity;
 
   const depreciation = rows
     .filter((account) => account.cashFlowTag === "depreciation" || account.name.includes("إهلاك"))
-    .reduce((sum, account) => sum + Math.abs(netAmount(account)), 0);
+    .reduce((sum, account) => sum + Math.abs(accountStatementAmount(account)), 0);
   const receivablesChange = rows
     .filter((account) => account.cashFlowTag === "receivablesChange" || account.name.includes("ذمم مدينة"))
-    .reduce((sum, account) => sum - Math.abs(netAmount(account)), 0);
+    .reduce((sum, account) => sum - Math.abs(accountStatementAmount(account)), 0);
   const payablesChange = rows
     .filter((account) => account.cashFlowTag === "payablesChange" || account.name.includes("ذمم دائنة"))
-    .reduce((sum, account) => sum + Math.abs(netAmount(account)), 0);
+    .reduce((sum, account) => sum + Math.abs(accountStatementAmount(account)), 0);
   const operatingCashFlow = netIncome + depreciation + receivablesChange + payablesChange;
   const investingCashFlow = rows
     .filter((account) => account.cashFlowTag === "investingPurchase")
-    .reduce((sum, account) => sum - Math.abs(netAmount(account)), 0);
+    .reduce((sum, account) => sum - Math.abs(accountStatementAmount(account)), 0);
   const financingCashFlow = rows
     .filter((account) => account.cashFlowTag === "financingLoan" || account.cashFlowTag === "capital" || account.cashFlowTag === "drawings")
-    .reduce((sum, account) => sum + (account.cashFlowTag === "drawings" ? -Math.abs(netAmount(account)) : Math.abs(netAmount(account))), 0);
+    .reduce((sum, account) => sum + (account.cashFlowTag === "drawings" ? -Math.abs(accountStatementAmount(account)) : Math.abs(accountStatementAmount(account))), 0);
   const detailedRows = {
-    incomeRevenue: byType.Revenue.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
-    incomeExpenses: byType.Expenses.map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
-    assets: byType.Assets.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
-    liabilities: byType.Liabilities.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
-    equityAccounts: byType.Equity.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    incomeRevenue: byType.Revenue.map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
+    incomeExpenses: byType.Expenses.map((account) => ({ id: account.id, label: account.name, value: -Math.abs(accountStatementAmount(account)), account })),
+    assets: byType.Assets.map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
+    liabilities: byType.Liabilities.map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
+    equityAccounts: byType.Equity.map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
     equityOpening: byType.Equity
       .filter((account) => account.cashFlowTag !== "drawings")
-      .map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
     equityDrawings: byType.Equity
       .filter((account) => account.cashFlowTag === "drawings" || account.name.includes("مسحوبات"))
-      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(accountStatementAmount(account)), account })),
     cashDepreciation: rows
       .filter((account) => account.cashFlowTag === "depreciation" || account.name.includes("إهلاك"))
-      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(netAmount(account)), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(accountStatementAmount(account)), account })),
     cashReceivables: rows
       .filter((account) => account.cashFlowTag === "receivablesChange" || account.name.includes("ذمم مدينة"))
-      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(accountStatementAmount(account)), account })),
     cashPayables: rows
       .filter((account) => account.cashFlowTag === "payablesChange" || account.name.includes("ذمم دائنة"))
-      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(netAmount(account)), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(accountStatementAmount(account)), account })),
     cashInvesting: rows
       .filter((account) => account.cashFlowTag === "investingPurchase")
-      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(accountStatementAmount(account)), account })),
     cashFinancing: rows
       .filter((account) => account.cashFlowTag === "financingLoan" || account.cashFlowTag === "capital" || account.cashFlowTag === "drawings")
       .map((account) => ({
         id: account.id,
         label: account.name,
-        value: account.cashFlowTag === "drawings" ? -Math.abs(netAmount(account)) : Math.abs(netAmount(account)),
+        value: account.cashFlowTag === "drawings" ? -Math.abs(accountStatementAmount(account)) : Math.abs(accountStatementAmount(account)),
         account
       }))
   };
@@ -175,13 +220,13 @@ export function calculateStatements(accounts) {
     income: [
       ...accountDetailCategories.Revenue.map((category) => ({
         title: category.label,
-        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
         totalLabel: `إجمالي ${category.label}`,
         totalValue: detailTotals[category.value]
       })),
       ...accountDetailCategories.Expenses.map((category) => ({
         title: category.label,
-        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: -Math.abs(accountStatementAmount(account)), account })),
         totalLabel: `إجمالي ${category.label}`,
         totalValue: -Math.abs(detailTotals[category.value])
       })),
@@ -190,19 +235,19 @@ export function calculateStatements(accounts) {
     financialPosition: [
       ...accountDetailCategories.Assets.map((category) => ({
         title: category.label,
-        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
         totalLabel: `إجمالي ${category.label}`,
         totalValue: detailTotals[category.value]
       })),
       ...accountDetailCategories.Liabilities.map((category) => ({
         title: category.label,
-        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
         totalLabel: `إجمالي ${category.label}`,
         totalValue: detailTotals[category.value]
       })),
       ...accountDetailCategories.Equity.map((category) => ({
         title: category.label,
-        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+        rows: byDetail[category.value].map((account) => ({ id: account.id, label: account.name, value: accountStatementAmount(account), account })),
         totalLabel: `إجمالي ${category.label}`,
         totalValue: detailTotals[category.value]
       })),
@@ -212,8 +257,15 @@ export function calculateStatements(accounts) {
 
   return {
     rows,
+    trialBalanceRows,
+    totalOpeningDebit,
+    totalOpeningCredit,
     totalDebit,
     totalCredit,
+    totalPeriodBalanceDebit,
+    totalPeriodBalanceCredit,
+    totalEndingDebit,
+    totalEndingCredit,
     balancedTrial: Math.abs(totalDebit - totalCredit) < 0.01,
     byType,
     byDetail,
@@ -256,20 +308,30 @@ export function parseExcelPaste(text) {
       );
     })
     .map((line) => {
-      const [name = "", type = "Assets", maybeDetailOrDebit = "0", maybeDebitOrCredit = "0", maybeCredit = "0", maybeCashFlowTag = "operating"] = line.split(/\t|,/);
-      const normalizedType = accountTypes.includes(type.trim()) ? type.trim() : "Assets";
-      const hasDetailColumn = Object.values(accountDetailCategories).flat().some((category) => category.value === maybeDetailOrDebit.trim() || category.label === maybeDetailOrDebit.trim());
+      const columns = line.split(/\t|,/).map((column) => column.trim());
+      const looksLikeAccountCode = columns.length >= 7;
+      const [accountCode = "", name = "", type = "Assets", maybeDetail = "", openingDebit = "0", openingCredit = "0", debit = "0", credit = "0", cashFlowTag = "operating"] = looksLikeAccountCode ? columns : ["", ...columns];
+      const legacyName = looksLikeAccountCode ? name : columns[0] || "";
+      const legacyType = looksLikeAccountCode ? type : columns[1] || "Assets";
+      const legacyMaybeDetailOrDebit = looksLikeAccountCode ? maybeDetail : columns[2] || "0";
+      const legacyMaybeDebitOrCredit = looksLikeAccountCode ? debit : columns[3] || "0";
+      const legacyMaybeCredit = looksLikeAccountCode ? credit : columns[4] || "0";
+      const finalType = accountTypes.includes(legacyType.trim()) ? legacyType.trim() : "Assets";
+      const hasDetailColumn = Object.values(accountDetailCategories).flat().some((category) => category.value === legacyMaybeDetailOrDebit.trim() || category.label === legacyMaybeDetailOrDebit.trim());
       const detailCategory = hasDetailColumn
-        ? Object.values(accountDetailCategories).flat().find((category) => category.value === maybeDetailOrDebit.trim() || category.label === maybeDetailOrDebit.trim()).value
-        : defaultDetailCategory(normalizedType);
+        ? Object.values(accountDetailCategories).flat().find((category) => category.value === legacyMaybeDetailOrDebit.trim() || category.label === legacyMaybeDetailOrDebit.trim()).value
+        : defaultDetailCategory(finalType);
       return {
         id: crypto.randomUUID(),
-        name: name.trim(),
-        type: normalizedType,
+        accountCode: looksLikeAccountCode ? accountCode : "",
+        name: legacyName.trim(),
+        type: finalType,
         detailCategory,
-        debit: normalizeNumber(hasDetailColumn ? maybeDebitOrCredit : maybeDetailOrDebit),
-        credit: normalizeNumber(hasDetailColumn ? maybeCredit : maybeDebitOrCredit),
-        cashFlowTag: hasDetailColumn ? maybeCashFlowTag.trim() || "operating" : "operating"
+        openingDebit: normalizeNumber(looksLikeAccountCode ? openingDebit : 0),
+        openingCredit: normalizeNumber(looksLikeAccountCode ? openingCredit : 0),
+        debit: normalizeNumber(looksLikeAccountCode ? debit : hasDetailColumn ? legacyMaybeDebitOrCredit : legacyMaybeDetailOrDebit),
+        credit: normalizeNumber(looksLikeAccountCode ? credit : hasDetailColumn ? legacyMaybeCredit : legacyMaybeDebitOrCredit),
+        cashFlowTag: looksLikeAccountCode ? cashFlowTag || "operating" : "operating"
       };
     });
 }

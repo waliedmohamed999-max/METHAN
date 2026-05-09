@@ -20,13 +20,13 @@ export default function AccountsInput({ accounts, setAccounts }) {
         if (key === "type") {
           return { ...account, type: value, detailCategory: defaultDetailCategory(value) };
         }
-        return { ...account, [key]: key === "debit" || key === "credit" ? Number(value) : value };
+        return { ...account, [key]: ["openingDebit", "openingCredit", "debit", "credit"].includes(key) ? Number(value) : value };
       })
     );
   }
 
   function addRow() {
-    setAccounts((current) => [...current, { id: crypto.randomUUID(), name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), debit: 0, credit: 0, cashFlowTag: "operating" }]);
+    setAccounts((current) => [...current, { id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
   function removeRow(id) {
@@ -47,7 +47,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel بالترتيب: الحساب، النوع، التصنيف التفصيلي، المدين، الدائن.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel: رقم الحساب، الحساب، النوع، التصنيف، رصيد بداية مدين/دائن، حركة مدين/دائن.</p>
         </div>
         <button onClick={addRow} className="no-print inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
           <Plus size={18} />
@@ -62,14 +62,17 @@ export default function AccountsInput({ accounts, setAccounts }) {
         </select>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1120px] text-right text-sm">
+        <table className="w-full min-w-[1500px] text-right text-sm">
           <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
+              <th className="px-3 py-3">رقم</th>
               <th className="px-3 py-3">اسم الحساب</th>
               <th className="px-3 py-3">النوع</th>
               <th className="px-3 py-3">التصنيف التفصيلي</th>
-              <th className="px-3 py-3">مدين</th>
-              <th className="px-3 py-3">دائن</th>
+              <th className="px-3 py-3">بداية مدين</th>
+              <th className="px-3 py-3">بداية دائن</th>
+              <th className="px-3 py-3">حركة مدين</th>
+              <th className="px-3 py-3">حركة دائن</th>
               <th className="px-3 py-3">تصنيف التدفق</th>
               <th className="px-3 py-3 no-print"><ClipboardPaste size={16} /></th>
             </tr>
@@ -77,6 +80,9 @@ export default function AccountsInput({ accounts, setAccounts }) {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {visibleAccounts.map((account) => (
               <tr key={account.id}>
+                <td className="px-3 py-2">
+                  <input value={account.accountCode || ""} onChange={(event) => updateAccount(account.id, "accountCode", event.target.value)} className="w-24 rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="101" />
+                </td>
                 <td className="px-3 py-2">
                   <input value={account.name} onPaste={handlePaste} onChange={(event) => updateAccount(account.id, "name", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="مثال: النقدية" />
                 </td>
@@ -89,6 +95,12 @@ export default function AccountsInput({ accounts, setAccounts }) {
                   <select value={normalizeDetailCategory(account.type, account.detailCategory)} onChange={(event) => updateAccount(account.id, "detailCategory", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                     {(accountDetailCategories[account.type] || []).map((category) => <option key={category.value} value={category.value}>{accountDetailCategoryLabels[category.value]}</option>)}
                   </select>
+                </td>
+                <td className="px-3 py-2">
+                  <input type="number" value={account.openingDebit || 0} onChange={(event) => updateAccount(account.id, "openingDebit", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                </td>
+                <td className="px-3 py-2">
+                  <input type="number" value={account.openingCredit || 0} onChange={(event) => updateAccount(account.id, "openingCredit", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
                 </td>
                 <td className="px-3 py-2">
                   <input type="number" value={account.debit} onChange={(event) => updateAccount(account.id, "debit", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />

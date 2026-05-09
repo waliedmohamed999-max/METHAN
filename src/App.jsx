@@ -13,7 +13,7 @@ import StatementTable from "./components/StatementTable.jsx";
 import TrialBalanceTable from "./components/TrialBalanceTable.jsx";
 import ValidationPanel from "./components/ValidationPanel.jsx";
 import { sampleAccounts } from "./data/sampleAccounts.js";
-import { accountDetailCategoryLabels, accountTypeLabels, calculateStatements, downloadCsv, money, netAmount, normalizeDetailCategory } from "./utils/accounting.js";
+import { accountDetailCategoryLabels, accountStatementAmount, accountTypeLabels, calculateStatements, downloadCsv, money, normalizeDetailCategory } from "./utils/accounting.js";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -105,15 +105,18 @@ export default function App() {
       ["المركز المالي", "الخصوم + حقوق الملكية", statements.liabilitiesAndEquity],
       ["التدفقات النقدية", "صافي التدفق النقدي", statements.cashFlow.netCashFlow],
       [],
-      ["تفاصيل الحسابات", "اسم الحساب", "النوع", "التصنيف التفصيلي", "مدين", "دائن", "الرصيد"],
+      ["تفاصيل الحسابات", "رقم الحساب", "اسم الحساب", "النوع", "التصنيف التفصيلي", "بداية مدين", "بداية دائن", "حركة مدين", "حركة دائن", "رصيد القائمة"],
       ...statements.rows.map((account) => [
         "تفاصيل الحسابات",
+        account.accountCode,
         account.name,
         accountTypeLabels[account.type],
         accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)],
+        account.openingDebit,
+        account.openingCredit,
         account.debit,
         account.credit,
-        netAmount(account)
+        accountStatementAmount(account)
       ]),
       [],
       ["تفاصيل القوائم", "القسم", "البند", "القيمة"],
@@ -155,7 +158,7 @@ export default function App() {
 
   function resetData() {
     if (!window.confirm("سيتم حذف البيانات الحالية واستعادة نموذج فارغ. هل تريد المتابعة؟")) return;
-    setAccounts([{ id: crypto.randomUUID(), name: "", type: "Assets", debit: 0, credit: 0, cashFlowTag: "operating" }]);
+    setAccounts([{ id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: "currentAssets", openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
   const chartData = {

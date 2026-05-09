@@ -1,4 +1,8 @@
-import { accountDetailCategoryLabels, accountTypeLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
+import { accountDetailCategoryLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
+
+function amount(value) {
+  return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
 
 function ReportTable({ title, rows, footerLabel, footerValue }) {
   return (
@@ -63,35 +67,54 @@ function DetailedReportTable({ title, sections }) {
   );
 }
 
-function AccountsTable({ title, rows, totalLabel, totalValue }) {
+function AccountsTable({ title, rows, totals }) {
   return (
     <section className="pdf-section">
       <h2>{title}</h2>
       <table className="pdf-table">
         <thead>
           <tr>
+            <th>رقم</th>
             <th>الحساب</th>
-            <th>النوع</th>
-            <th>التصنيف التفصيلي</th>
-            <th>مدين</th>
-            <th>دائن</th>
+            <th>التصنيف</th>
+            <th>بداية مدين</th>
+            <th>بداية دائن</th>
+            <th>حركة مدين</th>
+            <th>حركة دائن</th>
+            <th>رصيد فترة مدين</th>
+            <th>رصيد فترة دائن</th>
+            <th>نهاية مدين</th>
+            <th>نهاية دائن</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((account) => (
             <tr key={account.id}>
+              <td>{account.accountCode}</td>
               <td>{account.name}</td>
-              <td>{accountTypeLabels[account.type]}</td>
               <td>{accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)]}</td>
-              <td>{money(account.debit)}</td>
-              <td>{money(account.credit)}</td>
+              <td>{amount(account.openingDebit)}</td>
+              <td>{amount(account.openingCredit)}</td>
+              <td>{amount(account.debit)}</td>
+              <td>{amount(account.credit)}</td>
+              <td>{amount(account.periodBalanceDebit)}</td>
+              <td>{amount(account.periodBalanceCredit)}</td>
+              <td>{amount(account.endingDebit)}</td>
+              <td>{amount(account.endingCredit)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan="3">{totalLabel}</td>
-            <td colSpan="2">{money(totalValue)}</td>
+            <td colSpan="3">الإجمالي</td>
+            <td>{amount(totals.openingDebit)}</td>
+            <td>{amount(totals.openingCredit)}</td>
+            <td>{amount(totals.debit)}</td>
+            <td>{amount(totals.credit)}</td>
+            <td>{amount(totals.periodBalanceDebit)}</td>
+            <td>{amount(totals.periodBalanceCredit)}</td>
+            <td>{amount(totals.endingDebit)}</td>
+            <td>{amount(totals.endingCredit)}</td>
           </tr>
         </tfoot>
       </table>
@@ -139,7 +162,20 @@ export default function PrintableReport({ profile, statements }) {
         </div>
       </section>
 
-      <AccountsTable title="ميزان المراجعة" rows={statements.rows} totalLabel="إجمالي الميزان" totalValue={statements.totalDebit} />
+      <AccountsTable
+        title="ميزان المراجعة"
+        rows={statements.trialBalanceRows}
+        totals={{
+          openingDebit: statements.totalOpeningDebit,
+          openingCredit: statements.totalOpeningCredit,
+          debit: statements.totalDebit,
+          credit: statements.totalCredit,
+          periodBalanceDebit: statements.totalPeriodBalanceDebit,
+          periodBalanceCredit: statements.totalPeriodBalanceCredit,
+          endingDebit: statements.totalEndingDebit,
+          endingCredit: statements.totalEndingCredit
+        }}
+      />
 
       <DetailedReportTable title="قائمة الدخل التفصيلية" sections={statements.detailedSections.income} />
 
