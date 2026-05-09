@@ -248,22 +248,25 @@ function TabContent({ activeTab, statements, profile }) {
 
   if (activeTab === "income") {
     return (
-      <SimpleStatement
-        title={`قائمة الدخل - ${periodLabel}`}
-        rows={[
-          ["إجمالي الإيرادات", statements.revenueTotal],
-          ["إجمالي المصروفات", -statements.expensesTotal],
-          ["صافي الربح", statements.netIncome]
-        ]}
-      />
+      <div className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-2">
+          <StatementTable title={`تفصيل الإيرادات - ${profile.companyName}`} rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
+          <StatementTable title={`تفصيل المصروفات - ${profile.companyName}`} rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
+        </div>
+        <SimpleStatement title={`ملخص قائمة الدخل - ${periodLabel}`} rows={[["إجمالي الإيرادات", statements.revenueTotal], ["إجمالي المصروفات", -statements.expensesTotal], ["صافي الربح", statements.netIncome]]} />
+      </div>
     );
   }
 
   if (activeTab === "position") {
     return (
-      <div className="grid gap-6 xl:grid-cols-2">
-        <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-        <SimpleStatement title={`الخصوم وحقوق الملكية - ${periodLabel}`} rows={[["الخصوم", statements.totals.Liabilities], ["رأس المال آخر المدة", statements.endingEquity], ["الإجمالي", statements.liabilitiesAndEquity]]} />
+      <div className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-3">
+          <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
+          <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
+          <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
+        </div>
+        <SimpleStatement title={`ملخص المركز المالي - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
       </div>
     );
   }
@@ -304,11 +307,17 @@ function TabContent({ activeTab, statements, profile }) {
     return (
       <div className="space-y-6">
         <TrialBalanceTable statements={statements} />
-        <SimpleStatement title={`قائمة الدخل - ${periodLabel}`} rows={[["إجمالي الإيرادات", statements.revenueTotal], ["إجمالي المصروفات", -statements.expensesTotal], ["صافي الربح", statements.netIncome]]} />
         <div className="grid gap-6 xl:grid-cols-2">
-          <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-          <SimpleStatement title={`الخصوم وحقوق الملكية - ${periodLabel}`} rows={[["الخصوم", statements.totals.Liabilities], ["حقوق الملكية", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
+          <StatementTable title={`تفصيل الإيرادات - ${profile.companyName}`} rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
+          <StatementTable title={`تفصيل المصروفات - ${profile.companyName}`} rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
         </div>
+        <SimpleStatement title={`ملخص قائمة الدخل - ${periodLabel}`} rows={[["إجمالي الإيرادات", statements.revenueTotal], ["إجمالي المصروفات", -statements.expensesTotal], ["صافي الربح", statements.netIncome]]} />
+        <div className="grid gap-6 xl:grid-cols-3">
+          <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
+          <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
+          <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
+        </div>
+        <SimpleStatement title={`ملخص المركز المالي - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
         <SimpleStatement title={`قائمة التدفقات النقدية - ${periodLabel}`} rows={[["صافي الربح", statements.netIncome], ["إضافة الإهلاك", statements.cashFlow.depreciation], ["التغير في الذمم المدينة", statements.cashFlow.receivablesChange], ["التغير في الذمم الدائنة", statements.cashFlow.payablesChange], ["صافي التدفق التشغيلي", statements.cashFlow.operatingCashFlow], ["التدفقات الاستثمارية", statements.cashFlow.investingCashFlow], ["التدفقات التمويلية", statements.cashFlow.financingCashFlow], ["صافي التدفق النقدي", statements.cashFlow.netCashFlow]]} />
         <SimpleStatement title={`قائمة التغير في حقوق الملكية - ${periodLabel}`} rows={[["رأس المال أول المدة", statements.beginningCapital], ["صافي الربح", statements.netIncome], ["المسحوبات", -statements.drawings], ["رأس المال آخر المدة", statements.endingEquity]]} />
       </div>
@@ -316,9 +325,13 @@ function TabContent({ activeTab, statements, profile }) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
-      <StatementTable title={`الأصول - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-      <SimpleStatement title={`الخصوم وحقوق الملكية - ${periodLabel}`} rows={[["الخصوم", statements.totals.Liabilities], ["حقوق الملكية", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <StatementTable title={`الأصول - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
+        <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
+        <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
+      </div>
+      <SimpleStatement title={`ملخص الميزانية العمومية - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
     </div>
   );
 }

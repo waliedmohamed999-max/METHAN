@@ -193,6 +193,14 @@ body {
     align-items: start;
   }
 
+  .pdf-three-columns {
+    display: block;
+  }
+
+  .pdf-three-columns .pdf-section {
+    margin-bottom: 12px;
+  }
+
   .pdf-footer {
     display: flex;
     justify-content: space-between;

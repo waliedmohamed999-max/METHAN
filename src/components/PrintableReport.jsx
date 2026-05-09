@@ -102,8 +102,13 @@ export default function PrintableReport({ profile, statements }) {
 
       <AccountsTable title="ميزان المراجعة" rows={statements.rows} totalLabel="إجمالي الميزان" totalValue={statements.totalDebit} />
 
+      <section className="pdf-two-columns">
+        <AccountsTable title="تفصيل الإيرادات" rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
+        <AccountsTable title="تفصيل المصروفات" rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
+      </section>
+
       <ReportTable
-        title="قائمة الدخل"
+        title="ملخص قائمة الدخل"
         rows={[
           ["إجمالي الإيرادات", statements.revenueTotal],
           ["إجمالي المصروفات", -statements.expensesTotal]
@@ -112,18 +117,22 @@ export default function PrintableReport({ profile, statements }) {
         footerValue={statements.netIncome}
       />
 
-      <section className="pdf-two-columns">
+      <section className="pdf-three-columns">
         <AccountsTable title="الأصول" rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
-        <ReportTable
-          title="الخصوم وحقوق الملكية"
-          rows={[
-            ["إجمالي الخصوم", statements.totals.Liabilities],
-            ["حقوق الملكية آخر المدة", statements.endingEquity]
-          ]}
-          footerLabel="إجمالي الخصوم وحقوق الملكية"
-          footerValue={statements.liabilitiesAndEquity}
-        />
+        <AccountsTable title="الخصوم" rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
+        <AccountsTable title="حقوق الملكية" rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
       </section>
+
+      <ReportTable
+        title="ملخص المركز المالي"
+        rows={[
+          ["إجمالي الأصول", statements.totals.Assets],
+          ["إجمالي الخصوم", statements.totals.Liabilities],
+          ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity]
+        ]}
+        footerLabel="إجمالي الخصوم وحقوق الملكية"
+        footerValue={statements.liabilitiesAndEquity}
+      />
 
       <ReportTable
         title="قائمة التدفقات النقدية - الطريقة غير المباشرة"
