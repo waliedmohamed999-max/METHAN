@@ -19,6 +19,8 @@ export const cashFlowTags = [
   { value: "drawings", label: "مسحوبات" }
 ];
 
+export const cashFlowTagLabels = Object.fromEntries(cashFlowTags.map((tag) => [tag.value, tag.label]));
+
 export function money(value) {
   return new Intl.NumberFormat("ar-SA", {
     style: "currency",
@@ -72,8 +74,41 @@ export function calculateStatements(accounts) {
     .filter((account) => account.cashFlowTag === "investingPurchase")
     .reduce((sum, account) => sum - Math.abs(netAmount(account)), 0);
   const financingCashFlow = rows
-    .filter((account) => account.cashFlowTag === "financingLoan" || account.cashFlowTag === "capital")
-    .reduce((sum, account) => sum + Math.abs(netAmount(account)), 0);
+    .filter((account) => account.cashFlowTag === "financingLoan" || account.cashFlowTag === "capital" || account.cashFlowTag === "drawings")
+    .reduce((sum, account) => sum + (account.cashFlowTag === "drawings" ? -Math.abs(netAmount(account)) : Math.abs(netAmount(account))), 0);
+  const detailedRows = {
+    incomeRevenue: byType.Revenue.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    incomeExpenses: byType.Expenses.map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+    assets: byType.Assets.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    liabilities: byType.Liabilities.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    equityAccounts: byType.Equity.map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    equityOpening: byType.Equity
+      .filter((account) => account.cashFlowTag !== "drawings")
+      .map((account) => ({ id: account.id, label: account.name, value: netAmount(account), account })),
+    equityDrawings: byType.Equity
+      .filter((account) => account.cashFlowTag === "drawings" || account.name.includes("مسحوبات"))
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+    cashDepreciation: rows
+      .filter((account) => account.cashFlowTag === "depreciation" || account.name.includes("إهلاك"))
+      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(netAmount(account)), account })),
+    cashReceivables: rows
+      .filter((account) => account.cashFlowTag === "receivablesChange" || account.name.includes("ذمم مدينة"))
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+    cashPayables: rows
+      .filter((account) => account.cashFlowTag === "payablesChange" || account.name.includes("ذمم دائنة"))
+      .map((account) => ({ id: account.id, label: account.name, value: Math.abs(netAmount(account)), account })),
+    cashInvesting: rows
+      .filter((account) => account.cashFlowTag === "investingPurchase")
+      .map((account) => ({ id: account.id, label: account.name, value: -Math.abs(netAmount(account)), account })),
+    cashFinancing: rows
+      .filter((account) => account.cashFlowTag === "financingLoan" || account.cashFlowTag === "capital" || account.cashFlowTag === "drawings")
+      .map((account) => ({
+        id: account.id,
+        label: account.name,
+        value: account.cashFlowTag === "drawings" ? -Math.abs(netAmount(account)) : Math.abs(netAmount(account)),
+        account
+      }))
+  };
 
   return {
     rows,
@@ -90,6 +125,7 @@ export function calculateStatements(accounts) {
     endingEquity,
     liabilitiesAndEquity,
     financialPositionBalanced: Math.abs(totals.Assets - liabilitiesAndEquity) < 0.01,
+    detailedRows,
     cashFlow: {
       depreciation,
       receivablesChange,

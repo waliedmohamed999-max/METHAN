@@ -5,6 +5,7 @@ import { Pie } from "react-chartjs-2";
 import AccountsInput from "./components/AccountsInput.jsx";
 import AccountingNotes from "./components/AccountingNotes.jsx";
 import CompanySettings from "./components/CompanySettings.jsx";
+import DetailedStatement from "./components/DetailedStatement.jsx";
 import MetricCard from "./components/MetricCard.jsx";
 import PrintableReport from "./components/PrintableReport.jsx";
 import RatiosPanel from "./components/RatiosPanel.jsx";
@@ -69,6 +70,26 @@ export default function App() {
   }, [darkMode]);
 
   function exportExcel() {
+    const sectionRows = [
+      ["قائمة الدخل التفصيلية", "الإيرادات حسب الحساب", "", ""],
+      ...statements.detailedRows.incomeRevenue.map((row) => ["قائمة الدخل التفصيلية", "الإيرادات", row.label, row.value]),
+      ["قائمة الدخل التفصيلية", "المصروفات حسب الحساب", "", ""],
+      ...statements.detailedRows.incomeExpenses.map((row) => ["قائمة الدخل التفصيلية", "المصروفات", row.label, row.value]),
+      ["التدفقات النقدية التفصيلية", "تعديلات الإهلاك", "", ""],
+      ...statements.detailedRows.cashDepreciation.map((row) => ["التدفقات النقدية التفصيلية", "الإهلاك", row.label, row.value]),
+      ["التدفقات النقدية التفصيلية", "تغير الذمم المدينة", "", ""],
+      ...statements.detailedRows.cashReceivables.map((row) => ["التدفقات النقدية التفصيلية", "الذمم المدينة", row.label, row.value]),
+      ["التدفقات النقدية التفصيلية", "تغير الذمم الدائنة", "", ""],
+      ...statements.detailedRows.cashPayables.map((row) => ["التدفقات النقدية التفصيلية", "الذمم الدائنة", row.label, row.value]),
+      ["التدفقات النقدية التفصيلية", "استثمارية", "", ""],
+      ...statements.detailedRows.cashInvesting.map((row) => ["التدفقات النقدية التفصيلية", "استثمارية", row.label, row.value]),
+      ["التدفقات النقدية التفصيلية", "تمويلية", "", ""],
+      ...statements.detailedRows.cashFinancing.map((row) => ["التدفقات النقدية التفصيلية", "تمويلية", row.label, row.value]),
+      ["حقوق الملكية التفصيلية", "رأس المال أول المدة", "", ""],
+      ...statements.detailedRows.equityOpening.map((row) => ["حقوق الملكية التفصيلية", "رأس المال", row.label, row.value]),
+      ["حقوق الملكية التفصيلية", "المسحوبات", "", ""],
+      ...statements.detailedRows.equityDrawings.map((row) => ["حقوق الملكية التفصيلية", "المسحوبات", row.label, row.value])
+    ];
     const summaryRows = [
       ["القائمة", "البند", "القيمة"],
       ["ميزان المراجعة", "إجمالي المدين", statements.totalDebit],
@@ -88,7 +109,10 @@ export default function App() {
         account.debit,
         account.credit,
         netAmount(account)
-      ])
+      ]),
+      [],
+      ["تفاصيل القوائم", "القسم", "البند", "القيمة"],
+      ...sectionRows
     ];
 
     downloadCsv("mizan-financial-statements.csv", summaryRows);
@@ -248,13 +272,14 @@ function TabContent({ activeTab, statements, profile }) {
 
   if (activeTab === "income") {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-6 xl:grid-cols-2">
-          <StatementTable title={`تفصيل الإيرادات - ${profile.companyName}`} rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
-          <StatementTable title={`تفصيل المصروفات - ${profile.companyName}`} rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
-        </div>
-        <SimpleStatement title={`ملخص قائمة الدخل - ${periodLabel}`} rows={[["إجمالي الإيرادات", statements.revenueTotal], ["إجمالي المصروفات", -statements.expensesTotal], ["صافي الربح", statements.netIncome]]} />
-      </div>
+      <DetailedStatement
+        title={`قائمة الدخل التفصيلية - ${periodLabel}`}
+        sections={[
+          { title: "الإيرادات حسب الحساب", rows: statements.detailedRows.incomeRevenue, totalLabel: "إجمالي الإيرادات", totalValue: statements.revenueTotal },
+          { title: "المصروفات حسب الحساب", rows: statements.detailedRows.incomeExpenses, totalLabel: "إجمالي المصروفات", totalValue: -statements.expensesTotal },
+          { title: "نتيجة الفترة", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome }
+        ]}
+      />
     );
   }
 
@@ -273,17 +298,16 @@ function TabContent({ activeTab, statements, profile }) {
 
   if (activeTab === "cash") {
     return (
-      <SimpleStatement
-        title={`قائمة التدفقات النقدية - ${periodLabel}`}
-        rows={[
-          ["صافي الربح", statements.netIncome],
-          ["إضافة الإهلاك", statements.cashFlow.depreciation],
-          ["التغير في الذمم المدينة", statements.cashFlow.receivablesChange],
-          ["التغير في الذمم الدائنة", statements.cashFlow.payablesChange],
-          ["صافي التدفق التشغيلي", statements.cashFlow.operatingCashFlow],
-          ["التدفقات الاستثمارية", statements.cashFlow.investingCashFlow],
-          ["التدفقات التمويلية", statements.cashFlow.financingCashFlow],
-          ["صافي التدفق النقدي", statements.cashFlow.netCashFlow]
+      <DetailedStatement
+        title={`قائمة التدفقات النقدية التفصيلية - ${periodLabel}`}
+        sections={[
+          { title: "بداية التدفق التشغيلي", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+          { title: "تفصيل تعديلات الإهلاك", rows: statements.detailedRows.cashDepreciation, totalLabel: "إجمالي الإهلاك المضاف", totalValue: statements.cashFlow.depreciation },
+          { title: "تفصيل تغير الذمم المدينة", rows: statements.detailedRows.cashReceivables, totalLabel: "إجمالي أثر الذمم المدينة", totalValue: statements.cashFlow.receivablesChange },
+          { title: "تفصيل تغير الذمم الدائنة", rows: statements.detailedRows.cashPayables, totalLabel: "إجمالي أثر الذمم الدائنة", totalValue: statements.cashFlow.payablesChange },
+          { title: "التدفقات الاستثمارية حسب الحساب", rows: statements.detailedRows.cashInvesting, totalLabel: "صافي التدفق الاستثماري", totalValue: statements.cashFlow.investingCashFlow },
+          { title: "التدفقات التمويلية حسب الحساب", rows: statements.detailedRows.cashFinancing, totalLabel: "صافي التدفق التمويلي", totalValue: statements.cashFlow.financingCashFlow },
+          { title: "نتيجة التدفقات النقدية", rows: [{ id: "net-cash", label: "صافي التدفق النقدي", value: statements.cashFlow.netCashFlow }], totalLabel: "صافي التدفق النقدي", totalValue: statements.cashFlow.netCashFlow }
         ]}
       />
     );
@@ -291,13 +315,13 @@ function TabContent({ activeTab, statements, profile }) {
 
   if (activeTab === "equity") {
     return (
-      <SimpleStatement
-        title={`قائمة التغير في حقوق الملكية - ${periodLabel}`}
-        rows={[
-          ["رأس المال أول المدة", statements.beginningCapital],
-          ["صافي الربح", statements.netIncome],
-          ["المسحوبات", -statements.drawings],
-          ["رأس المال آخر المدة", statements.endingEquity]
+      <DetailedStatement
+        title={`قائمة التغير في حقوق الملكية التفصيلية - ${periodLabel}`}
+        sections={[
+          { title: "حسابات رأس المال أول المدة", rows: statements.detailedRows.equityOpening, totalLabel: "إجمالي رأس المال أول المدة", totalValue: statements.beginningCapital },
+          { title: "إضافة صافي الربح", rows: [{ id: "net-income", label: "صافي ربح الفترة", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+          { title: "تفصيل المسحوبات", rows: statements.detailedRows.equityDrawings, totalLabel: "إجمالي المسحوبات", totalValue: -statements.drawings },
+          { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
         ]}
       />
     );
@@ -307,19 +331,41 @@ function TabContent({ activeTab, statements, profile }) {
     return (
       <div className="space-y-6">
         <TrialBalanceTable statements={statements} />
-        <div className="grid gap-6 xl:grid-cols-2">
-          <StatementTable title={`تفصيل الإيرادات - ${profile.companyName}`} rows={statements.byType.Revenue} totalLabel="إجمالي الإيرادات" totalValue={statements.revenueTotal} />
-          <StatementTable title={`تفصيل المصروفات - ${profile.companyName}`} rows={statements.byType.Expenses} totalLabel="إجمالي المصروفات" totalValue={statements.expensesTotal} />
-        </div>
-        <SimpleStatement title={`ملخص قائمة الدخل - ${periodLabel}`} rows={[["إجمالي الإيرادات", statements.revenueTotal], ["إجمالي المصروفات", -statements.expensesTotal], ["صافي الربح", statements.netIncome]]} />
+        <DetailedStatement
+          title={`قائمة الدخل التفصيلية - ${periodLabel}`}
+          sections={[
+            { title: "الإيرادات حسب الحساب", rows: statements.detailedRows.incomeRevenue, totalLabel: "إجمالي الإيرادات", totalValue: statements.revenueTotal },
+            { title: "المصروفات حسب الحساب", rows: statements.detailedRows.incomeExpenses, totalLabel: "إجمالي المصروفات", totalValue: -statements.expensesTotal },
+            { title: "نتيجة الفترة", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome }
+          ]}
+        />
         <div className="grid gap-6 xl:grid-cols-3">
           <StatementTable title={`${accountTypeLabels.Assets} - ${profile.companyName}`} rows={statements.byType.Assets} totalLabel="إجمالي الأصول" totalValue={statements.totals.Assets} />
           <StatementTable title={`${accountTypeLabels.Liabilities} - ${profile.companyName}`} rows={statements.byType.Liabilities} totalLabel="إجمالي الخصوم" totalValue={statements.totals.Liabilities} />
           <StatementTable title={`${accountTypeLabels.Equity} - ${profile.companyName}`} rows={statements.byType.Equity} totalLabel="إجمالي حسابات حقوق الملكية" totalValue={statements.totals.Equity} />
         </div>
         <SimpleStatement title={`ملخص المركز المالي - ${periodLabel}`} rows={[["إجمالي الأصول", statements.totals.Assets], ["إجمالي الخصوم", statements.totals.Liabilities], ["حقوق الملكية بعد صافي الربح والمسحوبات", statements.endingEquity], ["إجمالي الخصوم وحقوق الملكية", statements.liabilitiesAndEquity]]} />
-        <SimpleStatement title={`قائمة التدفقات النقدية - ${periodLabel}`} rows={[["صافي الربح", statements.netIncome], ["إضافة الإهلاك", statements.cashFlow.depreciation], ["التغير في الذمم المدينة", statements.cashFlow.receivablesChange], ["التغير في الذمم الدائنة", statements.cashFlow.payablesChange], ["صافي التدفق التشغيلي", statements.cashFlow.operatingCashFlow], ["التدفقات الاستثمارية", statements.cashFlow.investingCashFlow], ["التدفقات التمويلية", statements.cashFlow.financingCashFlow], ["صافي التدفق النقدي", statements.cashFlow.netCashFlow]]} />
-        <SimpleStatement title={`قائمة التغير في حقوق الملكية - ${periodLabel}`} rows={[["رأس المال أول المدة", statements.beginningCapital], ["صافي الربح", statements.netIncome], ["المسحوبات", -statements.drawings], ["رأس المال آخر المدة", statements.endingEquity]]} />
+        <DetailedStatement
+          title={`قائمة التدفقات النقدية التفصيلية - ${periodLabel}`}
+          sections={[
+            { title: "بداية التدفق التشغيلي", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+            { title: "تفصيل تعديلات الإهلاك", rows: statements.detailedRows.cashDepreciation, totalLabel: "إجمالي الإهلاك المضاف", totalValue: statements.cashFlow.depreciation },
+            { title: "تفصيل تغير الذمم المدينة", rows: statements.detailedRows.cashReceivables, totalLabel: "إجمالي أثر الذمم المدينة", totalValue: statements.cashFlow.receivablesChange },
+            { title: "تفصيل تغير الذمم الدائنة", rows: statements.detailedRows.cashPayables, totalLabel: "إجمالي أثر الذمم الدائنة", totalValue: statements.cashFlow.payablesChange },
+            { title: "التدفقات الاستثمارية حسب الحساب", rows: statements.detailedRows.cashInvesting, totalLabel: "صافي التدفق الاستثماري", totalValue: statements.cashFlow.investingCashFlow },
+            { title: "التدفقات التمويلية حسب الحساب", rows: statements.detailedRows.cashFinancing, totalLabel: "صافي التدفق التمويلي", totalValue: statements.cashFlow.financingCashFlow },
+            { title: "نتيجة التدفقات النقدية", rows: [{ id: "net-cash", label: "صافي التدفق النقدي", value: statements.cashFlow.netCashFlow }], totalLabel: "صافي التدفق النقدي", totalValue: statements.cashFlow.netCashFlow }
+          ]}
+        />
+        <DetailedStatement
+          title={`قائمة التغير في حقوق الملكية التفصيلية - ${periodLabel}`}
+          sections={[
+            { title: "حسابات رأس المال أول المدة", rows: statements.detailedRows.equityOpening, totalLabel: "إجمالي رأس المال أول المدة", totalValue: statements.beginningCapital },
+            { title: "إضافة صافي الربح", rows: [{ id: "net-income", label: "صافي ربح الفترة", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+            { title: "تفصيل المسحوبات", rows: statements.detailedRows.equityDrawings, totalLabel: "إجمالي المسحوبات", totalValue: -statements.drawings },
+            { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
+          ]}
+        />
       </div>
     );
   }

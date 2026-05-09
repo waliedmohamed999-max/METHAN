@@ -186,6 +186,16 @@ body {
     font-weight: 800;
   }
 
+  .pdf-detail-table {
+    margin-bottom: 8px;
+  }
+
+  .pdf-detail-table thead th {
+    background: #f1f5f9;
+    color: #334155;
+    text-align: right;
+  }
+
   .pdf-two-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;

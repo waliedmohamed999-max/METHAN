@@ -26,6 +26,43 @@ function ReportTable({ title, rows, footerLabel, footerValue }) {
   );
 }
 
+function DetailedReportTable({ title, sections }) {
+  return (
+    <section className="pdf-section">
+      <h2>{title}</h2>
+      {sections.map((section) => (
+        <table className="pdf-table pdf-detail-table" key={section.title}>
+          <thead>
+            <tr>
+              <th colSpan="2">{section.title}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {section.rows.length ? (
+              section.rows.map((row) => (
+                <tr key={row.id || row.label}>
+                  <td>{row.label}</td>
+                  <td>{money(row.value)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="2">لا توجد بنود</td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>{section.totalLabel}</td>
+              <td>{money(section.totalValue)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      ))}
+    </section>
+  );
+}
+
 function AccountsTable({ title, rows, totalLabel, totalValue }) {
   return (
     <section className="pdf-section">
@@ -134,30 +171,27 @@ export default function PrintableReport({ profile, statements }) {
         footerValue={statements.liabilitiesAndEquity}
       />
 
-      <ReportTable
-        title="قائمة التدفقات النقدية - الطريقة غير المباشرة"
-        rows={[
-          ["صافي الربح", statements.netIncome],
-          ["إضافة الإهلاك", statements.cashFlow.depreciation],
-          ["التغير في الذمم المدينة", statements.cashFlow.receivablesChange],
-          ["التغير في الذمم الدائنة", statements.cashFlow.payablesChange],
-          ["صافي التدفق التشغيلي", statements.cashFlow.operatingCashFlow],
-          ["التدفقات الاستثمارية", statements.cashFlow.investingCashFlow],
-          ["التدفقات التمويلية", statements.cashFlow.financingCashFlow]
+      <DetailedReportTable
+        title="قائمة التدفقات النقدية التفصيلية - الطريقة غير المباشرة"
+        sections={[
+          { title: "بداية التدفق التشغيلي", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+          { title: "تفصيل تعديلات الإهلاك", rows: statements.detailedRows.cashDepreciation, totalLabel: "إجمالي الإهلاك المضاف", totalValue: statements.cashFlow.depreciation },
+          { title: "تفصيل تغير الذمم المدينة", rows: statements.detailedRows.cashReceivables, totalLabel: "إجمالي أثر الذمم المدينة", totalValue: statements.cashFlow.receivablesChange },
+          { title: "تفصيل تغير الذمم الدائنة", rows: statements.detailedRows.cashPayables, totalLabel: "إجمالي أثر الذمم الدائنة", totalValue: statements.cashFlow.payablesChange },
+          { title: "التدفقات الاستثمارية حسب الحساب", rows: statements.detailedRows.cashInvesting, totalLabel: "صافي التدفق الاستثماري", totalValue: statements.cashFlow.investingCashFlow },
+          { title: "التدفقات التمويلية حسب الحساب", rows: statements.detailedRows.cashFinancing, totalLabel: "صافي التدفق التمويلي", totalValue: statements.cashFlow.financingCashFlow },
+          { title: "نتيجة التدفقات النقدية", rows: [{ id: "net-cash", label: "صافي التدفق النقدي", value: statements.cashFlow.netCashFlow }], totalLabel: "صافي التدفق النقدي", totalValue: statements.cashFlow.netCashFlow }
         ]}
-        footerLabel="صافي التدفق النقدي"
-        footerValue={statements.cashFlow.netCashFlow}
       />
 
-      <ReportTable
-        title="قائمة التغير في حقوق الملكية"
-        rows={[
-          ["رأس المال أول المدة", statements.beginningCapital],
-          ["صافي الربح", statements.netIncome],
-          ["المسحوبات", -statements.drawings]
+      <DetailedReportTable
+        title="قائمة التغير في حقوق الملكية التفصيلية"
+        sections={[
+          { title: "حسابات رأس المال أول المدة", rows: statements.detailedRows.equityOpening, totalLabel: "إجمالي رأس المال أول المدة", totalValue: statements.beginningCapital },
+          { title: "إضافة صافي الربح", rows: [{ id: "net-income", label: "صافي ربح الفترة", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+          { title: "تفصيل المسحوبات", rows: statements.detailedRows.equityDrawings, totalLabel: "إجمالي المسحوبات", totalValue: -statements.drawings },
+          { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
         ]}
-        footerLabel="رأس المال آخر المدة"
-        footerValue={statements.endingEquity}
       />
 
       <footer className="pdf-footer">
