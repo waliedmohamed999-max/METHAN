@@ -534,7 +534,11 @@ export function buildAuditOpinionReport(profile, statements) {
     basisTitle: basisTitleByType[evaluation.type],
     basisText: basisTextByType[evaluation.type],
     opinionTitle: titleByType[evaluation.type],
-    opinionText: opinionTextByType[evaluation.type]
+    opinionText: opinionTextByType[evaluation.type],
+    auditFirmName: profile.auditFirmName || "....................................",
+    auditorName: profile.auditorName || "....................................",
+    licenseNumber: profile.licenseNumber || "....................",
+    reportCity: profile.reportCity || "...................."
   };
 }
 
@@ -558,9 +562,11 @@ export function formatAuditOpinionText(report) {
     report.opinionTitle,
     report.opinionText,
     "",
-    "مكتب المراجعة: ....................................",
-    "المراجع القانوني: ....................................",
-    `تاريخ التقرير: ${report.period.split(" إلى ")[1] || ""}`
+    `${report.reportCity}، ${report.period.split(" إلى ")[1] || ""}`,
+    `مكتب المراجعة: ${report.auditFirmName}`,
+    `المراجع القانوني: ${report.auditorName}`,
+    `رقم الترخيص: ${report.licenseNumber}`,
+    "التوقيع: ...................................."
   ].join("\n");
 }
 

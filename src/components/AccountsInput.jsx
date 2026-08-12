@@ -1,4 +1,4 @@
-import { ClipboardPaste, CornerDownLeft, FileSpreadsheet, FileUp, ListTree, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ClipboardPaste, CornerDownLeft, FileSpreadsheet, FileUp, ListTree, Plus, Trash2 } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import {
   accountDetailCategories,
@@ -15,6 +15,8 @@ import {
   readTrialBalanceExcelFile,
   splitDebitCredit
 } from "../utils/accounting.js";
+
+const MONEY_FIELDS = ["openingDebit", "openingCredit", "debit", "credit", "periodBalanceDebit", "periodBalanceCredit", "endingDebit", "endingCredit"];
 
 function amount(value) {
   return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -35,9 +37,19 @@ function withMoney(account) {
   };
 }
 
+function sumMoney(rows) {
+  return rows.reduce((totals, row) => {
+    MONEY_FIELDS.forEach((field) => {
+      totals[field] += row[field] || 0;
+    });
+    return totals;
+  }, Object.fromEntries(MONEY_FIELDS.map((field) => [field, 0])));
+}
+
 export default function AccountsInput({ accounts, setAccounts }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set());
   const isBrowsingAll = !query.trim() && typeFilter === "All";
 
   const visibleAccounts = useMemo(() => {
@@ -48,32 +60,27 @@ export default function AccountsInput({ accounts, setAccounts }) {
     });
   }, [accounts, query, typeFilter]);
   const visibleRows = useMemo(() => visibleAccounts.map(withMoney), [visibleAccounts]);
-  const visibleTotals = useMemo(() => {
-    return visibleRows.reduce(
-      (totals, account) => ({
-        openingDebit: totals.openingDebit + normalizeNumber(account.openingDebit),
-        openingCredit: totals.openingCredit + normalizeNumber(account.openingCredit),
-        debit: totals.debit + normalizeNumber(account.debit),
-        credit: totals.credit + normalizeNumber(account.credit),
-        periodBalanceDebit: totals.periodBalanceDebit + account.periodBalanceDebit,
-        periodBalanceCredit: totals.periodBalanceCredit + account.periodBalanceCredit,
-        endingDebit: totals.endingDebit + account.endingDebit,
-        endingCredit: totals.endingCredit + account.endingCredit
-      }),
-      { openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, periodBalanceDebit: 0, periodBalanceCredit: 0, endingDebit: 0, endingCredit: 0 }
-    );
-  }, [visibleRows]);
+  const visibleTotals = useMemo(() => sumMoney(visibleRows), [visibleRows]);
 
   const accountGroups = useMemo(() => {
     const accountIds = new Set(accounts.map((account) => account.id));
     // Accounts whose parentId points at nothing (e.g. an edited backup file) are treated as top-level
     // so they still show up instead of silently disappearing from the grouped view.
     const mains = accounts.filter((account) => !account.parentId || !accountIds.has(account.parentId));
-    return mains.map((main) => ({
-      main: withMoney(main),
-      children: accounts.filter((account) => account.parentId === main.id).map(withMoney)
-    }));
+    return mains.map((main) => {
+      const children = accounts.filter((account) => account.parentId === main.id).map(withMoney);
+      return { main: withMoney(main), children, subtotal: sumMoney(children) };
+    });
   }, [accounts]);
+
+  function toggleCollapsed(id) {
+    setCollapsedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function updateAccount(id, key, value) {
     setAccounts((current) =>
@@ -94,12 +101,13 @@ export default function AccountsInput({ accounts, setAccounts }) {
     setAccounts((current) => [...current, { id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
-  function addChildRow(main) {
+  function addChildRow(main, existingChildCount) {
+    const suggestedCode = main.accountCode?.trim() ? `${main.accountCode.trim()}-${existingChildCount + 1}` : "";
     setAccounts((current) => [
       ...current,
       {
         id: crypto.randomUUID(),
-        accountCode: "",
+        accountCode: suggestedCode,
         name: "",
         type: main.type,
         detailCategory: main.detailCategory,
@@ -111,6 +119,12 @@ export default function AccountsInput({ accounts, setAccounts }) {
         cashFlowTag: main.cashFlowTag || "operating"
       }
     ]);
+    setCollapsedIds((current) => {
+      if (!current.has(main.id)) return current;
+      const next = new Set(current);
+      next.delete(main.id);
+      return next;
+    });
   }
 
   function removeRow(id) {
@@ -147,7 +161,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
     }
   }
 
-  function renderAccountRow(account, isChild) {
+  function renderAccountRow(account, isChild, mainMeta) {
     return (
       <tr key={account.id} className={isChild ? "account-row-child" : "account-row-main"}>
         <td>
@@ -156,6 +170,16 @@ export default function AccountsInput({ accounts, setAccounts }) {
         <td>
           <div className="flex items-center gap-1.5">
             {isChild ? <CornerDownLeft size={14} className="shrink-0 text-slate-400" /> : null}
+            {!isChild && mainMeta?.hasChildren ? (
+              <button
+                type="button"
+                onClick={mainMeta.onToggleCollapse}
+                className="no-print shrink-0 rounded p-0.5 text-slate-500 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
+                title={mainMeta.collapsed ? "إظهار الحسابات الفرعية" : "إخفاء الحسابات الفرعية"}
+              >
+                {mainMeta.collapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+              </button>
+            ) : null}
             <input
               value={account.name}
               onPaste={handlePaste}
@@ -213,6 +237,24 @@ export default function AccountsInput({ accounts, setAccounts }) {
     );
   }
 
+  function renderSubtotalRow(group) {
+    const { subtotal } = group;
+    return (
+      <tr key={`${group.main.id}-subtotal`} className="account-subtotal-row">
+        <td colSpan="6">إجمالي الفروع لحساب «{group.main.name.trim() || "هذا الحساب"}» ({group.children.length})</td>
+        <td className="readonly-money">{amount(subtotal.openingDebit)}</td>
+        <td className="readonly-money">{amount(subtotal.openingCredit)}</td>
+        <td className="readonly-money">{amount(subtotal.debit)}</td>
+        <td className="readonly-money">{amount(subtotal.credit)}</td>
+        <td className="readonly-money">{amount(subtotal.periodBalanceDebit)}</td>
+        <td className="readonly-money">{amount(subtotal.periodBalanceCredit)}</td>
+        <td className="readonly-money ending-money">{amount(subtotal.endingDebit)}</td>
+        <td className="readonly-money ending-money">{amount(subtotal.endingCredit)}</td>
+        <td className="no-print"></td>
+      </tr>
+    );
+  }
+
   return (
     <section className="print-card accounting-panel">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
@@ -222,7 +264,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
           </span>
           <div>
             <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">كل حساب رئيسي له صندوق خاص به في الجدول، واضغط "إضافة حساب فرعي" أسفله لإضافة خانة أرقام جديدة تتبعه مباشرة دون الحاجة لاختيار الحساب الرئيسي يدويًا.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">كل حساب رئيسي له صندوق خاص به في الجدول، وتقدر تطويه بالسهم بجانب اسمه. اضغط "إضافة حساب فرعي" أسفله لإضافة خانة أرقام جديدة تتبعه مباشرة برقم حساب مقترح تلقائيًا، وسطر "إجمالي الفروع" بيتحدث لحظيًا مع كل رقم تدخله.</p>
           </div>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
@@ -281,20 +323,25 @@ export default function AccountsInput({ accounts, setAccounts }) {
           </thead>
           <tbody>
             {isBrowsingAll
-              ? accountGroups.map((group) => (
-                  <Fragment key={group.main.id}>
-                    {renderAccountRow(group.main, false)}
-                    {group.children.map((child) => renderAccountRow(child, true))}
-                    <tr className="account-add-child-row no-print">
-                      <td colSpan="15">
-                        <button onClick={() => addChildRow(group.main)} className="add-sub-account-button">
-                          <Plus size={14} />
-                          إضافة حساب فرعي لـ «{group.main.name.trim() || "هذا الحساب"}»
-                        </button>
-                      </td>
-                    </tr>
-                  </Fragment>
-                ))
+              ? accountGroups.map((group) => {
+                  const hasChildren = group.children.length > 0;
+                  const collapsed = collapsedIds.has(group.main.id);
+                  return (
+                    <Fragment key={group.main.id}>
+                      {renderAccountRow(group.main, false, { hasChildren, collapsed, onToggleCollapse: () => toggleCollapsed(group.main.id) })}
+                      {hasChildren ? renderSubtotalRow(group) : null}
+                      {hasChildren && !collapsed ? group.children.map((child) => renderAccountRow(child, true)) : null}
+                      <tr className="account-add-child-row no-print">
+                        <td colSpan="15">
+                          <button onClick={() => addChildRow(group.main, group.children.length)} className="add-sub-account-button">
+                            <Plus size={14} />
+                            إضافة حساب فرعي لـ «{group.main.name.trim() || "هذا الحساب"}»
+                          </button>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })
               : visibleRows.map((account) => renderAccountRow(account, Boolean(account.parentId)))}
           </tbody>
           <tfoot>

@@ -40,7 +40,8 @@ function readStoredAccounts() {
 
 function readStoredProfile() {
   try {
-    return JSON.parse(localStorage.getItem("mizan.profile")) || defaultProfile;
+    const stored = JSON.parse(localStorage.getItem("mizan.profile"));
+    return stored ? { ...defaultProfile, ...stored } : defaultProfile;
   } catch {
     return defaultProfile;
   }
@@ -57,7 +58,12 @@ function readStoredOpinionOverride() {
 const defaultProfile = {
   companyName: "شركة ميزان التجارية",
   periodStart: "2026-01-01",
-  periodEnd: "2026-12-31"
+  periodEnd: "2026-12-31",
+  logoDataUrl: "",
+  auditFirmName: "",
+  auditorName: "",
+  licenseNumber: "",
+  reportCity: ""
 };
 
 export default function App() {
@@ -178,6 +184,18 @@ export default function App() {
     setAccounts([{ id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: "currentAssets", parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
+  function printCurrentReport() {
+    const tabLabel = tabs.find((tab) => tab.id === activeTab)?.label || "تقرير";
+    const previousTitle = document.title;
+    document.title = `${tabLabel} - ${profile.companyName || "ميزان"}`;
+    function restoreTitle() {
+      document.title = previousTitle;
+      window.removeEventListener("afterprint", restoreTitle);
+    }
+    window.addEventListener("afterprint", restoreTitle);
+    window.print();
+  }
+
   const chartData = {
     labels: ["الإيرادات", "المصروفات"],
     datasets: [
@@ -216,7 +234,7 @@ export default function App() {
               <Download size={18} />
               Backup
             </button>
-            <button onClick={() => window.print()} className="toolbar-button-primary">
+            <button onClick={printCurrentReport} className="toolbar-button-primary" title="تحميل التقرير المعروض حاليًا فقط">
               <Printer size={18} />
               PDF
             </button>
@@ -264,7 +282,7 @@ export default function App() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-black text-slate-950 dark:text-white">القوائم والتقارير</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">اختر التقرير المطلوب بعد إدخال ميزان المراجعة</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">اختر التقرير المطلوب، وحمّله بصيغة PDF لوحده من زر "PDF" أعلى الصفحة أو زر التحميل أسفلها.</p>
               </div>
               <span className={`rounded-md px-3 py-1.5 text-xs font-bold ${statements.balancedTrial ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200" : "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-200"}`}>
                 {statements.balancedTrial ? "الميزان متوازن" : "الميزان غير متوازن"}
@@ -279,30 +297,32 @@ export default function App() {
             </nav>
           </section>
 
-          <TabContent activeTab={activeTab} statements={statements} profile={profile} opinionOverride={opinionOverride} setOpinionOverride={setOpinionOverride} />
+          <TabContent activeTab={activeTab} statements={statements} profile={profile} setProfile={setProfile} opinionOverride={opinionOverride} setOpinionOverride={setOpinionOverride} />
         </div>
       </div>
       <div className="no-print mx-auto max-w-[1600px] px-4 pb-8 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-panel dark:border-slate-800 dark:bg-slate-900">
           <div>
             <h2 className="text-base font-bold text-slate-950 dark:text-white">تصدير التقرير المالي</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">تحميل ميزان المراجعة والقوائم المالية كاملة بتنسيق PDF احترافي.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              يحمّل الزر تقرير التبويب المفتوح حاليًا فقط («{tabs.find((tab) => tab.id === activeTab)?.label}») بتنسيق PDF احترافي. لتحميل كل القوائم مجمّعة في ملف واحد، افتح تبويب "تقرير شامل" أولًا.
+            </p>
           </div>
-          <button onClick={() => window.print()} className="inline-flex h-11 items-center gap-2 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">
+          <button onClick={printCurrentReport} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">
             <Printer size={18} />
-            تحميل PDF
+            تحميل PDF لهذا التقرير
           </button>
         </div>
       </div>
       </div>
       <div className="print-only">
-        <PrintableReport profile={profile} statements={statements} opinionOverride={opinionOverride} />
+        <PrintableReport profile={profile} statements={statements} opinionOverride={opinionOverride} section={activeTab} />
       </div>
     </main>
   );
 }
 
-function TabContent({ activeTab, statements, profile, opinionOverride, setOpinionOverride }) {
+function TabContent({ activeTab, statements, profile, setProfile, opinionOverride, setOpinionOverride }) {
   const periodLabel = `${profile.companyName} | ${profile.periodStart} إلى ${profile.periodEnd}`;
 
   if (activeTab === "trial") {
@@ -314,7 +334,7 @@ function TabContent({ activeTab, statements, profile, opinionOverride, setOpinio
   }
 
   if (activeTab === "opinion") {
-    return <AuditOpinionReport profile={profile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />;
+    return <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />;
   }
 
   if (activeTab === "income") {
@@ -392,7 +412,7 @@ function TabContent({ activeTab, statements, profile, opinionOverride, setOpinio
           ]}
         />
         <FinancialAnalysisReport title={`التحليل المالي - ${periodLabel}`} statements={statements} />
-        <AuditOpinionReport profile={profile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />
+        <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />
       </div>
     );
   }

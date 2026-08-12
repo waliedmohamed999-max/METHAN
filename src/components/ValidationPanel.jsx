@@ -1,7 +1,31 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { money } from "../utils/accounting.js";
+import { accountTypeLabels, money } from "../utils/accounting.js";
+
+function findIssues(statements) {
+  const codeCounts = {};
+  statements.rows.forEach((account) => {
+    const code = account.accountCode?.trim();
+    if (code) codeCounts[code] = (codeCounts[code] || 0) + 1;
+  });
+  const duplicateCodes = Object.entries(codeCounts)
+    .filter(([, count]) => count > 1)
+    .map(([code]) => code);
+
+  const idSet = new Set(statements.rows.map((account) => account.id));
+  const orphanSubs = statements.rows.filter((account) => account.parentId && !idSet.has(account.parentId));
+
+  const byId = Object.fromEntries(statements.rows.map((account) => [account.id, account]));
+  const typeMismatches = statements.rows.filter((account) => {
+    const parent = account.parentId && byId[account.parentId];
+    return parent && parent.type !== account.type;
+  });
+
+  return { duplicateCodes, orphanSubs, typeMismatches };
+}
 
 export default function ValidationPanel({ statements }) {
+  const { duplicateCodes, orphanSubs, typeMismatches } = findIssues(statements);
+
   const checks = [
     {
       label: "ميزان المراجعة",
@@ -21,6 +45,24 @@ export default function ValidationPanel({ statements }) {
       label: "تصنيف الحسابات",
       ok: statements.rows.every((account) => account.type && account.name.trim()),
       detail: "كل حساب يحتاج اسمًا ونوعًا محاسبيًا واضحًا."
+    },
+    {
+      label: "أرقام الحسابات",
+      ok: duplicateCodes.length === 0,
+      detail: duplicateCodes.length === 0 ? "لا يوجد رقم حساب مكرر." : `أرقام مكررة: ${duplicateCodes.join("، ")}.`
+    },
+    {
+      label: "ارتباط الحسابات الفرعية",
+      ok: orphanSubs.length === 0,
+      detail: orphanSubs.length === 0 ? "كل حساب فرعي مرتبط بحساب رئيسي موجود." : `${orphanSubs.length} حساب فرعي مرتبط بحساب رئيسي غير موجود: ${orphanSubs.map((account) => account.name || account.accountCode).join("، ")}.`
+    },
+    {
+      label: "اتساق نوع الحسابات الفرعية",
+      ok: typeMismatches.length === 0,
+      detail:
+        typeMismatches.length === 0
+          ? "كل حساب فرعي بنفس نوع حسابه الرئيسي."
+          : `${typeMismatches.length} حساب فرعي بنوع مختلف عن رئيسيه: ${typeMismatches.map((account) => `${account.name} (${accountTypeLabels[account.type]})`).join("، ")}.`
     }
   ];
 

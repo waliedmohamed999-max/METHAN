@@ -434,6 +434,18 @@ body {
   color: #cbd5e1;
 }
 
+.account-subtotal-row td {
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dark .account-subtotal-row td {
+  background: #052e2b;
+  color: #6ee7b7;
+}
+
 .account-add-child-row td {
   border-bottom: 1px dashed #cbd5e1;
   padding: 4px 8px !important;
@@ -545,6 +557,19 @@ body {
     margin: 0 0 5px;
     color: #0f766e;
     font-weight: 700;
+  }
+
+  .pdf-cover-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pdf-logo {
+    height: 48px;
+    width: 48px;
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   .pdf-cover h1 {

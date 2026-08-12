@@ -1,8 +1,27 @@
-import { Building2, CalendarDays, RotateCcw, Upload } from "lucide-react";
+import { Building2, CalendarDays, ImagePlus, RotateCcw, Upload, X } from "lucide-react";
+
+const MAX_LOGO_BYTES = 700 * 1024;
 
 export default function CompanySettings({ profile, setProfile, onReset, onImportBackup }) {
   function updateProfile(key, value) {
     setProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleLogoUpload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      window.alert("يرجى اختيار ملف صورة (PNG أو JPG) لشعار المنشأة.");
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      window.alert("حجم الصورة كبير جدًا. يرجى اختيار شعار أصغر من 700 كيلوبايت.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => updateProfile("logoDataUrl", reader.result);
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -29,7 +48,29 @@ export default function CompanySettings({ profile, setProfile, onReset, onImport
           </button>
         </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="grid gap-3 lg:grid-cols-[auto_1.4fr_1fr_1fr]">
+        <div className="no-print flex items-center gap-3">
+          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+            {profile.logoDataUrl ? (
+              <img src={profile.logoDataUrl} alt="شعار المنشأة" className="h-full w-full object-contain" />
+            ) : (
+              <ImagePlus size={20} className="text-slate-400" />
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+              <Upload size={13} />
+              {profile.logoDataUrl ? "تغيير الشعار" : "إضافة شعار"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+            </label>
+            {profile.logoDataUrl ? (
+              <button onClick={() => updateProfile("logoDataUrl", "")} className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950">
+                <X size={13} />
+                إزالة
+              </button>
+            ) : null}
+          </div>
+        </div>
         <label className="block text-sm">
           <span className="mb-1 block text-slate-500 dark:text-slate-400">اسم المنشأة</span>
           <input value={profile.companyName} onChange={(event) => updateProfile("companyName", event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />

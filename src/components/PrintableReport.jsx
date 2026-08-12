@@ -192,7 +192,81 @@ function AuditOpinionPdfSection({ profile, statements, overrideText }) {
   );
 }
 
-export default function PrintableReport({ profile, statements, opinionOverride }) {
+function TrialBalancePdfSection({ statements }) {
+  return (
+    <AccountsTable
+      title="ميزان المراجعة بالحسابات الفرعية والتجميع"
+      groups={statements.trialBalanceGroups}
+      totals={{
+        openingDebit: statements.totalOpeningDebit,
+        openingCredit: statements.totalOpeningCredit,
+        debit: statements.totalDebit,
+        credit: statements.totalCredit,
+        periodBalanceDebit: statements.totalPeriodBalanceDebit,
+        periodBalanceCredit: statements.totalPeriodBalanceCredit,
+        endingDebit: statements.totalEndingDebit,
+        endingCredit: statements.totalEndingCredit
+      }}
+    />
+  );
+}
+
+function cashFlowSections(statements) {
+  return [
+    { title: "بداية التدفق التشغيلي", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+    { title: "تفصيل تعديلات الإهلاك", rows: statements.detailedRows.cashDepreciation, totalLabel: "إجمالي الإهلاك المضاف", totalValue: statements.cashFlow.depreciation },
+    { title: "تفصيل تغير الذمم المدينة", rows: statements.detailedRows.cashReceivables, totalLabel: "إجمالي أثر الذمم المدينة", totalValue: statements.cashFlow.receivablesChange },
+    { title: "تفصيل تغير الذمم الدائنة", rows: statements.detailedRows.cashPayables, totalLabel: "إجمالي أثر الذمم الدائنة", totalValue: statements.cashFlow.payablesChange },
+    { title: "التدفقات الاستثمارية حسب الحساب", rows: statements.detailedRows.cashInvesting, totalLabel: "صافي التدفق الاستثماري", totalValue: statements.cashFlow.investingCashFlow },
+    { title: "التدفقات التمويلية حسب الحساب", rows: statements.detailedRows.cashFinancing, totalLabel: "صافي التدفق التمويلي", totalValue: statements.cashFlow.financingCashFlow },
+    { title: "نتيجة التدفقات النقدية", rows: [{ id: "net-cash", label: "صافي التدفق النقدي", value: statements.cashFlow.netCashFlow }], totalLabel: "صافي التدفق النقدي", totalValue: statements.cashFlow.netCashFlow }
+  ];
+}
+
+function equitySections(statements) {
+  return [
+    { title: "حسابات رأس المال أول المدة", rows: statements.detailedRows.equityOpening, totalLabel: "إجمالي رأس المال أول المدة", totalValue: statements.beginningCapital },
+    { title: "إضافة صافي الربح", rows: [{ id: "net-income", label: "صافي ربح الفترة", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
+    { title: "تفصيل المسحوبات", rows: statements.detailedRows.equityDrawings, totalLabel: "إجمالي المسحوبات", totalValue: -statements.drawings },
+    { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
+  ];
+}
+
+const sectionTitles = {
+  trial: "تقرير ميزان المراجعة",
+  income: "تقرير قائمة الدخل",
+  position: "تقرير قائمة المركز المالي",
+  cash: "تقرير قائمة التدفقات النقدية",
+  equity: "تقرير قائمة التغير في حقوق الملكية",
+  balance: "تقرير الميزانية العمومية",
+  analysis: "تقرير التحليل المالي",
+  opinion: "تقرير رأي مراجع الحسابات",
+  report: "تقرير القوائم المالية الشامل"
+};
+
+function SectionBody({ section, profile, statements, opinionOverride }) {
+  if (section === "trial") return <TrialBalancePdfSection statements={statements} />;
+  if (section === "income") return <DetailedReportTable title="قائمة الدخل التفصيلية" sections={statements.detailedSections.income} />;
+  if (section === "position" || section === "balance") return <DetailedReportTable title="قائمة المركز المالي التفصيلية" sections={statements.detailedSections.financialPosition} />;
+  if (section === "cash") return <DetailedReportTable title="قائمة التدفقات النقدية التفصيلية - الطريقة غير المباشرة" sections={cashFlowSections(statements)} />;
+  if (section === "equity") return <DetailedReportTable title="قائمة التغير في حقوق الملكية التفصيلية" sections={equitySections(statements)} />;
+  if (section === "analysis") return <FinancialAnalysisPdfSection statements={statements} />;
+  if (section === "opinion") return <AuditOpinionPdfSection profile={profile} statements={statements} overrideText={opinionOverride} />;
+
+  return (
+    <>
+      <TrialBalancePdfSection statements={statements} />
+      <DetailedReportTable title="قائمة الدخل التفصيلية" sections={statements.detailedSections.income} />
+      <DetailedReportTable title="قائمة المركز المالي التفصيلية" sections={statements.detailedSections.financialPosition} />
+      <DetailedReportTable title="قائمة التدفقات النقدية التفصيلية - الطريقة غير المباشرة" sections={cashFlowSections(statements)} />
+      <DetailedReportTable title="قائمة التغير في حقوق الملكية التفصيلية" sections={equitySections(statements)} />
+      <FinancialAnalysisPdfSection statements={statements} />
+      <AuditOpinionPdfSection profile={profile} statements={statements} overrideText={opinionOverride} />
+    </>
+  );
+}
+
+export default function PrintableReport({ profile, statements, opinionOverride, section = "report" }) {
   const period = `${profile.periodStart} إلى ${profile.periodEnd}`;
   const generatedAt = new Intl.DateTimeFormat("ar-SA", {
     dateStyle: "medium",
@@ -202,10 +276,13 @@ export default function PrintableReport({ profile, statements, opinionOverride }
   return (
     <article className="pdf-report" dir="rtl">
       <header className="pdf-cover">
-        <div>
-          <p className="pdf-kicker">تقرير القوائم المالية</p>
-          <h1>{profile.companyName}</h1>
-          <p>الفترة المالية: {period}</p>
+        <div className="pdf-cover-title">
+          {profile.logoDataUrl ? <img src={profile.logoDataUrl} alt="" className="pdf-logo" /> : null}
+          <div>
+            <p className="pdf-kicker">{sectionTitles[section] || sectionTitles.report}</p>
+            <h1>{profile.companyName}</h1>
+            <p>الفترة المالية: {period}</p>
+          </div>
         </div>
         <div className="pdf-stamp">
           <strong>ميزان</strong>
@@ -232,51 +309,7 @@ export default function PrintableReport({ profile, statements, opinionOverride }
         </div>
       </section>
 
-      <AccountsTable
-        title="ميزان المراجعة بالحسابات الفرعية والتجميع"
-        groups={statements.trialBalanceGroups}
-        totals={{
-          openingDebit: statements.totalOpeningDebit,
-          openingCredit: statements.totalOpeningCredit,
-          debit: statements.totalDebit,
-          credit: statements.totalCredit,
-          periodBalanceDebit: statements.totalPeriodBalanceDebit,
-          periodBalanceCredit: statements.totalPeriodBalanceCredit,
-          endingDebit: statements.totalEndingDebit,
-          endingCredit: statements.totalEndingCredit
-        }}
-      />
-
-      <DetailedReportTable title="قائمة الدخل التفصيلية" sections={statements.detailedSections.income} />
-
-      <DetailedReportTable title="قائمة المركز المالي التفصيلية" sections={statements.detailedSections.financialPosition} />
-
-      <DetailedReportTable
-        title="قائمة التدفقات النقدية التفصيلية - الطريقة غير المباشرة"
-        sections={[
-          { title: "بداية التدفق التشغيلي", rows: [{ id: "net-income", label: "صافي الربح", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
-          { title: "تفصيل تعديلات الإهلاك", rows: statements.detailedRows.cashDepreciation, totalLabel: "إجمالي الإهلاك المضاف", totalValue: statements.cashFlow.depreciation },
-          { title: "تفصيل تغير الذمم المدينة", rows: statements.detailedRows.cashReceivables, totalLabel: "إجمالي أثر الذمم المدينة", totalValue: statements.cashFlow.receivablesChange },
-          { title: "تفصيل تغير الذمم الدائنة", rows: statements.detailedRows.cashPayables, totalLabel: "إجمالي أثر الذمم الدائنة", totalValue: statements.cashFlow.payablesChange },
-          { title: "التدفقات الاستثمارية حسب الحساب", rows: statements.detailedRows.cashInvesting, totalLabel: "صافي التدفق الاستثماري", totalValue: statements.cashFlow.investingCashFlow },
-          { title: "التدفقات التمويلية حسب الحساب", rows: statements.detailedRows.cashFinancing, totalLabel: "صافي التدفق التمويلي", totalValue: statements.cashFlow.financingCashFlow },
-          { title: "نتيجة التدفقات النقدية", rows: [{ id: "net-cash", label: "صافي التدفق النقدي", value: statements.cashFlow.netCashFlow }], totalLabel: "صافي التدفق النقدي", totalValue: statements.cashFlow.netCashFlow }
-        ]}
-      />
-
-      <DetailedReportTable
-        title="قائمة التغير في حقوق الملكية التفصيلية"
-        sections={[
-          { title: "حسابات رأس المال أول المدة", rows: statements.detailedRows.equityOpening, totalLabel: "إجمالي رأس المال أول المدة", totalValue: statements.beginningCapital },
-          { title: "إضافة صافي الربح", rows: [{ id: "net-income", label: "صافي ربح الفترة", value: statements.netIncome }], totalLabel: "صافي الربح", totalValue: statements.netIncome },
-          { title: "تفصيل المسحوبات", rows: statements.detailedRows.equityDrawings, totalLabel: "إجمالي المسحوبات", totalValue: -statements.drawings },
-          { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
-        ]}
-      />
-
-      <FinancialAnalysisPdfSection statements={statements} />
-
-      <AuditOpinionPdfSection profile={profile} statements={statements} overrideText={opinionOverride} />
+      <SectionBody section={section} profile={profile} statements={statements} opinionOverride={opinionOverride} />
 
       <footer className="pdf-footer">
         <span>تم إنشاء التقرير في {generatedAt}</span>
