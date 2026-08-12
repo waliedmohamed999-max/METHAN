@@ -1,5 +1,5 @@
-import { ClipboardPaste, FileSpreadsheet, FileUp, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ClipboardPaste, CornerDownLeft, FileSpreadsheet, FileUp, ListTree, Plus, Trash2 } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
 import {
   accountDetailCategories,
   accountDetailCategoryLabels,
@@ -20,9 +20,26 @@ function amount(value) {
   return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
+function withMoney(account) {
+  const openingNet = normalizeNumber(account.openingDebit) - normalizeNumber(account.openingCredit);
+  const periodNet = normalizeNumber(account.debit) - normalizeNumber(account.credit);
+  const periodBalance = splitDebitCredit(periodNet);
+  const endingBalance = splitDebitCredit(openingNet + periodNet);
+
+  return {
+    ...account,
+    periodBalanceDebit: periodBalance.debit,
+    periodBalanceCredit: periodBalance.credit,
+    endingDebit: endingBalance.debit,
+    endingCredit: endingBalance.credit
+  };
+}
+
 export default function AccountsInput({ accounts, setAccounts }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  const isBrowsingAll = !query.trim() && typeFilter === "All";
+
   const visibleAccounts = useMemo(() => {
     return accounts.filter((account) => {
       const matchesQuery = account.name.toLowerCase().includes(query.trim().toLowerCase());
@@ -30,22 +47,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
       return matchesQuery && matchesType;
     });
   }, [accounts, query, typeFilter]);
-  const visibleRows = useMemo(() => {
-    return visibleAccounts.map((account) => {
-      const openingNet = normalizeNumber(account.openingDebit) - normalizeNumber(account.openingCredit);
-      const periodNet = normalizeNumber(account.debit) - normalizeNumber(account.credit);
-      const periodBalance = splitDebitCredit(periodNet);
-      const endingBalance = splitDebitCredit(openingNet + periodNet);
-
-      return {
-        ...account,
-        periodBalanceDebit: periodBalance.debit,
-        periodBalanceCredit: periodBalance.credit,
-        endingDebit: endingBalance.debit,
-        endingCredit: endingBalance.credit
-      };
-    });
-  }, [visibleAccounts]);
+  const visibleRows = useMemo(() => visibleAccounts.map(withMoney), [visibleAccounts]);
   const visibleTotals = useMemo(() => {
     return visibleRows.reduce(
       (totals, account) => ({
@@ -62,6 +64,17 @@ export default function AccountsInput({ accounts, setAccounts }) {
     );
   }, [visibleRows]);
 
+  const accountGroups = useMemo(() => {
+    const accountIds = new Set(accounts.map((account) => account.id));
+    // Accounts whose parentId points at nothing (e.g. an edited backup file) are treated as top-level
+    // so they still show up instead of silently disappearing from the grouped view.
+    const mains = accounts.filter((account) => !account.parentId || !accountIds.has(account.parentId));
+    return mains.map((main) => ({
+      main: withMoney(main),
+      children: accounts.filter((account) => account.parentId === main.id).map(withMoney)
+    }));
+  }, [accounts]);
+
   function updateAccount(id, key, value) {
     setAccounts((current) =>
       current.map((account) => {
@@ -77,8 +90,27 @@ export default function AccountsInput({ accounts, setAccounts }) {
     );
   }
 
-  function addRow() {
+  function addMainRow() {
     setAccounts((current) => [...current, { id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
+  }
+
+  function addChildRow(main) {
+    setAccounts((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        accountCode: "",
+        name: "",
+        type: main.type,
+        detailCategory: main.detailCategory,
+        parentId: main.id,
+        openingDebit: 0,
+        openingCredit: 0,
+        debit: 0,
+        credit: 0,
+        cashFlowTag: main.cashFlowTag || "operating"
+      }
+    ]);
   }
 
   function removeRow(id) {
@@ -115,12 +147,83 @@ export default function AccountsInput({ accounts, setAccounts }) {
     }
   }
 
+  function renderAccountRow(account, isChild) {
+    return (
+      <tr key={account.id} className={isChild ? "account-row-child" : "account-row-main"}>
+        <td>
+          <input value={account.accountCode || ""} onChange={(event) => updateAccount(account.id, "accountCode", event.target.value)} className="accounting-input w-24 text-center" placeholder="101" />
+        </td>
+        <td>
+          <div className="flex items-center gap-1.5">
+            {isChild ? <CornerDownLeft size={14} className="shrink-0 text-slate-400" /> : null}
+            <input
+              value={account.name}
+              onPaste={handlePaste}
+              onChange={(event) => updateAccount(account.id, "name", event.target.value)}
+              className={`accounting-input min-w-[190px] ${isChild ? "child-name-input" : "font-bold"}`}
+              placeholder={isChild ? "اسم الحساب الفرعي" : "مثال: النقدية"}
+            />
+          </div>
+        </td>
+        <td>
+          <select value={account.type} onChange={(event) => updateAccount(account.id, "type", event.target.value)} className="accounting-input min-w-[130px]">
+            {accountTypes.map((type) => <option key={type} value={type}>{accountTypeLabels[type]}</option>)}
+          </select>
+        </td>
+        <td>
+          <select value={normalizeDetailCategory(account.type, account.detailCategory)} onChange={(event) => updateAccount(account.id, "detailCategory", event.target.value)} className="accounting-input min-w-[160px]">
+            {(accountDetailCategories[account.type] || []).map((category) => <option key={category.value} value={category.value}>{accountDetailCategoryLabels[category.value]}</option>)}
+          </select>
+        </td>
+        <td>
+          <select value={account.parentId || ""} onChange={(event) => updateAccount(account.id, "parentId", event.target.value)} className="accounting-input min-w-[170px]">
+            <option value="">— حساب رئيسي —</option>
+            {accountParentOptions(accounts, account.id).map((option) => (
+              <option key={option.id} value={option.id}>{option.accountCode ? `${option.accountCode} - ${option.name}` : option.name}</option>
+            ))}
+          </select>
+        </td>
+        <td>
+          <select value={account.cashFlowTag} onChange={(event) => updateAccount(account.id, "cashFlowTag", event.target.value)} className="accounting-input min-w-[145px]">
+            {cashFlowTags.map((tag) => <option key={tag.value} value={tag.value}>{tag.label}</option>)}
+          </select>
+        </td>
+        <td>
+          <input type="number" value={account.openingDebit || 0} onChange={(event) => updateAccount(account.id, "openingDebit", event.target.value)} className="accounting-input number-cell" />
+        </td>
+        <td>
+          <input type="number" value={account.openingCredit || 0} onChange={(event) => updateAccount(account.id, "openingCredit", event.target.value)} className="accounting-input number-cell" />
+        </td>
+        <td>
+          <input type="number" value={account.debit} onChange={(event) => updateAccount(account.id, "debit", event.target.value)} className="accounting-input number-cell" />
+        </td>
+        <td>
+          <input type="number" value={account.credit} onChange={(event) => updateAccount(account.id, "credit", event.target.value)} className="accounting-input number-cell" />
+        </td>
+        <td className="readonly-money">{amount(account.periodBalanceDebit)}</td>
+        <td className="readonly-money">{amount(account.periodBalanceCredit)}</td>
+        <td className="readonly-money ending-money">{amount(account.endingDebit)}</td>
+        <td className="readonly-money ending-money">{amount(account.endingCredit)}</td>
+        <td className="no-print text-center">
+          <button onClick={() => removeRow(account.id)} className="rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950" title="حذف">
+            <Trash2 size={18} />
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
   return (
     <section className="print-card accounting-panel">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-        <div>
-          <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel، أو اعتماد ملف إكسل جاهز بنفس ترتيب الأعمدة، ثم تعديل القيم كما تريد. حدد "الحساب الرئيسي" لأي حساب فرعي ليظهر مجمّعًا تحته في ميزان المراجعة.</p>
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-200">
+            <ListTree size={18} />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">كل حساب رئيسي له صندوق خاص به في الجدول، واضغط "إضافة حساب فرعي" أسفله لإضافة خانة أرقام جديدة تتبعه مباشرة دون الحاجة لاختيار الحساب الرئيسي يدويًا.</p>
+          </div>
         </div>
         <div className="no-print flex flex-wrap items-center gap-2">
           <button onClick={downloadTrialBalanceTemplate} className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
@@ -132,9 +235,9 @@ export default function AccountsInput({ accounts, setAccounts }) {
             اعتماد ملف إكسل
             <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelFile} />
           </label>
-          <button onClick={addRow} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">
+          <button onClick={addMainRow} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">
             <Plus size={18} />
-            إضافة حساب
+            حساب رئيسي جديد
           </button>
         </div>
       </div>
@@ -145,6 +248,9 @@ export default function AccountsInput({ accounts, setAccounts }) {
           {accountTypes.map((type) => <option key={type} value={type}>{accountTypeLabels[type]}</option>)}
         </select>
       </div>
+      {!isBrowsingAll ? (
+        <p className="no-print mb-3 text-xs font-semibold text-amber-700 dark:text-amber-300">وضع البحث/الفلترة نشط: يظهر جدول مسطح للنتائج المطابقة فقط. امسح البحث وأعد "كل التصنيفات" لرؤية الحسابات الرئيسية والفرعية مجمّعة.</p>
+      ) : null}
       <div className="accounting-table-wrap">
         <table className="accounting-entry-table detailed-entry-table">
           <thead>
@@ -174,60 +280,22 @@ export default function AccountsInput({ accounts, setAccounts }) {
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((account) => (
-              <tr key={account.id}>
-                <td>
-                  <input value={account.accountCode || ""} onChange={(event) => updateAccount(account.id, "accountCode", event.target.value)} className="accounting-input w-24 text-center" placeholder="101" />
-                </td>
-                <td>
-                  <input value={account.name} onPaste={handlePaste} onChange={(event) => updateAccount(account.id, "name", event.target.value)} className="accounting-input min-w-[190px]" placeholder="مثال: النقدية" />
-                </td>
-                <td>
-                  <select value={account.type} onChange={(event) => updateAccount(account.id, "type", event.target.value)} className="accounting-input min-w-[130px]">
-                    {accountTypes.map((type) => <option key={type} value={type}>{accountTypeLabels[type]}</option>)}
-                  </select>
-                </td>
-                <td>
-                  <select value={normalizeDetailCategory(account.type, account.detailCategory)} onChange={(event) => updateAccount(account.id, "detailCategory", event.target.value)} className="accounting-input min-w-[150px]">
-                    {(accountDetailCategories[account.type] || []).map((category) => <option key={category.value} value={category.value}>{accountDetailCategoryLabels[category.value]}</option>)}
-                  </select>
-                </td>
-                <td>
-                  <select value={account.parentId || ""} onChange={(event) => updateAccount(account.id, "parentId", event.target.value)} className="accounting-input min-w-[160px]">
-                    <option value="">— حساب رئيسي —</option>
-                    {accountParentOptions(accounts, account.id).map((option) => (
-                      <option key={option.id} value={option.id}>{option.accountCode ? `${option.accountCode} - ${option.name}` : option.name}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select value={account.cashFlowTag} onChange={(event) => updateAccount(account.id, "cashFlowTag", event.target.value)} className="accounting-input min-w-[145px]">
-                    {cashFlowTags.map((tag) => <option key={tag.value} value={tag.value}>{tag.label}</option>)}
-                  </select>
-                </td>
-                <td>
-                  <input type="number" value={account.openingDebit || 0} onChange={(event) => updateAccount(account.id, "openingDebit", event.target.value)} className="accounting-input number-cell" />
-                </td>
-                <td>
-                  <input type="number" value={account.openingCredit || 0} onChange={(event) => updateAccount(account.id, "openingCredit", event.target.value)} className="accounting-input number-cell" />
-                </td>
-                <td>
-                  <input type="number" value={account.debit} onChange={(event) => updateAccount(account.id, "debit", event.target.value)} className="accounting-input number-cell" />
-                </td>
-                <td>
-                  <input type="number" value={account.credit} onChange={(event) => updateAccount(account.id, "credit", event.target.value)} className="accounting-input number-cell" />
-                </td>
-                <td className="readonly-money">{amount(account.periodBalanceDebit)}</td>
-                <td className="readonly-money">{amount(account.periodBalanceCredit)}</td>
-                <td className="readonly-money ending-money">{amount(account.endingDebit)}</td>
-                <td className="readonly-money ending-money">{amount(account.endingCredit)}</td>
-                <td className="no-print text-center">
-                  <button onClick={() => removeRow(account.id)} className="rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950" title="حذف">
-                    <Trash2 size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {isBrowsingAll
+              ? accountGroups.map((group) => (
+                  <Fragment key={group.main.id}>
+                    {renderAccountRow(group.main, false)}
+                    {group.children.map((child) => renderAccountRow(child, true))}
+                    <tr className="account-add-child-row no-print">
+                      <td colSpan="15">
+                        <button onClick={() => addChildRow(group.main)} className="add-sub-account-button">
+                          <Plus size={14} />
+                          إضافة حساب فرعي لـ «{group.main.name.trim() || "هذا الحساب"}»
+                        </button>
+                      </td>
+                    </tr>
+                  </Fragment>
+                ))
+              : visibleRows.map((account) => renderAccountRow(account, Boolean(account.parentId)))}
           </tbody>
           <tfoot>
             <tr>

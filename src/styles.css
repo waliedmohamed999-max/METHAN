@@ -404,6 +404,72 @@ body {
   font-weight: 700;
 }
 
+.account-row-main {
+  border-top: 2px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.dark .account-row-main {
+  border-top-color: #334155;
+  background: #0b1220;
+}
+
+.account-row-main td:first-child {
+  border-right: 3px solid #0f766e;
+}
+
+.account-row-child {
+  background: #ffffff;
+}
+
+.dark .account-row-child {
+  background: #020617;
+}
+
+.child-name-input {
+  color: #475569;
+}
+
+.dark .child-name-input {
+  color: #cbd5e1;
+}
+
+.account-add-child-row td {
+  border-bottom: 1px dashed #cbd5e1;
+  padding: 4px 8px !important;
+}
+
+.dark .account-add-child-row td {
+  border-bottom-color: #334155;
+}
+
+.add-sub-account-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed #0d9488;
+  border-radius: 5px;
+  padding: 4px 10px;
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 700;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.add-sub-account-button:hover {
+  background: #f0fdfa;
+}
+
+.dark .add-sub-account-button {
+  color: #5eead4;
+  border-color: #0d9488;
+}
+
+.dark .add-sub-account-button:hover {
+  background: #042f2e;
+}
+
 .trial-balance-group-row {
   background: #eef4fb;
   font-weight: 800;
