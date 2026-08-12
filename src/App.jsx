@@ -3,8 +3,10 @@ import { BarChart3, Download, FileSpreadsheet, Moon, Printer, Sun } from "lucide
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js";
 import { Pie } from "react-chartjs-2";
 import AccountsInput from "./components/AccountsInput.jsx";
+import AuditOpinionReport from "./components/AuditOpinionReport.jsx";
 import CompanySettings from "./components/CompanySettings.jsx";
 import DetailedStatement from "./components/DetailedStatement.jsx";
+import FinancialAnalysisReport from "./components/FinancialAnalysisReport.jsx";
 import MetricCard from "./components/MetricCard.jsx";
 import PrintableReport from "./components/PrintableReport.jsx";
 import RatiosPanel from "./components/RatiosPanel.jsx";
@@ -23,6 +25,8 @@ const tabs = [
   { id: "cash", label: "التدفقات النقدية" },
   { id: "equity", label: "حقوق الملكية" },
   { id: "balance", label: "الميزانية العمومية" },
+  { id: "analysis", label: "التحليل المالي" },
+  { id: "opinion", label: "رأي المراجع" },
   { id: "report", label: "تقرير شامل" }
 ];
 
@@ -42,6 +46,14 @@ function readStoredProfile() {
   }
 }
 
+function readStoredOpinionOverride() {
+  try {
+    return localStorage.getItem("mizan.opinionOverride") || "";
+  } catch {
+    return "";
+  }
+}
+
 const defaultProfile = {
   companyName: "شركة ميزان التجارية",
   periodStart: "2026-01-01",
@@ -51,6 +63,7 @@ const defaultProfile = {
 export default function App() {
   const [accounts, setAccounts] = useState(readStoredAccounts);
   const [profile, setProfile] = useState(readStoredProfile);
+  const [opinionOverride, setOpinionOverride] = useState(readStoredOpinionOverride);
   const [activeTab, setActiveTab] = useState("trial");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("mizan.theme") === "dark");
   const statements = useMemo(() => calculateStatements(accounts), [accounts]);
@@ -62,6 +75,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("mizan.profile", JSON.stringify(profile));
   }, [profile]);
+
+  useEffect(() => {
+    localStorage.setItem("mizan.opinionOverride", opinionOverride);
+  }, [opinionOverride]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -104,11 +121,12 @@ export default function App() {
       ["المركز المالي", "الخصوم + حقوق الملكية", statements.liabilitiesAndEquity],
       ["التدفقات النقدية", "صافي التدفق النقدي", statements.cashFlow.netCashFlow],
       [],
-      ["تفاصيل الحسابات", "رقم الحساب", "اسم الحساب", "النوع", "التصنيف التفصيلي", "بداية مدين", "بداية دائن", "حركة مدين", "حركة دائن", "رصيد القائمة"],
+      ["تفاصيل الحسابات", "رقم الحساب", "اسم الحساب", "الحساب الرئيسي", "النوع", "التصنيف التفصيلي", "بداية مدين", "بداية دائن", "حركة مدين", "حركة دائن", "رصيد القائمة"],
       ...statements.rows.map((account) => [
         "تفاصيل الحسابات",
         account.accountCode,
         account.name,
+        statements.rows.find((parent) => parent.id === account.parentId)?.name || "",
         accountTypeLabels[account.type],
         accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)],
         account.openingDebit,
@@ -157,7 +175,7 @@ export default function App() {
 
   function resetData() {
     if (!window.confirm("سيتم حذف البيانات الحالية واستعادة نموذج فارغ. هل تريد المتابعة؟")) return;
-    setAccounts([{ id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: "currentAssets", openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
+    setAccounts([{ id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: "currentAssets", parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
   const chartData = {
@@ -261,7 +279,7 @@ export default function App() {
             </nav>
           </section>
 
-          <TabContent activeTab={activeTab} statements={statements} profile={profile} />
+          <TabContent activeTab={activeTab} statements={statements} profile={profile} opinionOverride={opinionOverride} setOpinionOverride={setOpinionOverride} />
         </div>
       </div>
       <div className="no-print mx-auto max-w-[1600px] px-4 pb-8 lg:px-6">
@@ -278,17 +296,25 @@ export default function App() {
       </div>
       </div>
       <div className="print-only">
-        <PrintableReport profile={profile} statements={statements} />
+        <PrintableReport profile={profile} statements={statements} opinionOverride={opinionOverride} />
       </div>
     </main>
   );
 }
 
-function TabContent({ activeTab, statements, profile }) {
+function TabContent({ activeTab, statements, profile, opinionOverride, setOpinionOverride }) {
   const periodLabel = `${profile.companyName} | ${profile.periodStart} إلى ${profile.periodEnd}`;
 
   if (activeTab === "trial") {
     return <TrialBalanceTable statements={statements} />;
+  }
+
+  if (activeTab === "analysis") {
+    return <FinancialAnalysisReport title={`التحليل المالي - ${periodLabel}`} statements={statements} />;
+  }
+
+  if (activeTab === "opinion") {
+    return <AuditOpinionReport profile={profile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />;
   }
 
   if (activeTab === "income") {
@@ -365,6 +391,8 @@ function TabContent({ activeTab, statements, profile }) {
             { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
           ]}
         />
+        <FinancialAnalysisReport title={`التحليل المالي - ${periodLabel}`} statements={statements} />
+        <AuditOpinionReport profile={profile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />
       </div>
     );
   }

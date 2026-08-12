@@ -213,7 +213,7 @@ body {
 
 .accounting-entry-table {
   width: 100%;
-  min-width: 1780px;
+  min-width: 1940px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
@@ -402,6 +402,27 @@ body {
 .trial-balance-table .balance-cell {
   color: #2563eb;
   font-weight: 700;
+}
+
+.trial-balance-group-row {
+  background: #eef4fb;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dark .trial-balance-group-row {
+  background: #0b2333;
+  color: #f8fafc;
+}
+
+.trial-balance-child-row .child-name-cell {
+  padding-right: 22px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.dark .trial-balance-child-row .child-name-cell {
+  color: #94a3b8;
 }
 
 @media print {
@@ -626,6 +647,49 @@ body {
     background: #f1f5f9;
     color: #334155;
     text-align: right;
+  }
+
+  .pdf-group-row {
+    background: #e2e8f0 !important;
+    font-weight: 800;
+  }
+
+  .pdf-child-row td:nth-child(2) {
+    padding-right: 14px;
+    color: #475569;
+  }
+
+  .pdf-analysis-table td:nth-child(1) {
+    width: 32%;
+    font-weight: 700;
+  }
+
+  .pdf-analysis-table td:nth-child(2) {
+    width: 14%;
+    direction: ltr;
+    text-align: left;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .pdf-note-cell {
+    color: #475569;
+    font-size: 9px;
+  }
+
+  .pdf-opinion-section {
+    break-inside: avoid;
+  }
+
+  .pdf-opinion-text {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid #d8dee9;
+    background: #f8fafc;
+    white-space: pre-wrap;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10px;
+    line-height: 1.6;
   }
 
   .pdf-two-columns {

@@ -1,6 +1,20 @@
-import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
+import { ClipboardPaste, FileSpreadsheet, FileUp, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { accountDetailCategories, accountDetailCategoryLabels, accountTypeLabels, accountTypes, cashFlowTags, defaultDetailCategory, normalizeDetailCategory, normalizeNumber, parseExcelPaste, splitDebitCredit } from "../utils/accounting.js";
+import {
+  accountDetailCategories,
+  accountDetailCategoryLabels,
+  accountParentOptions,
+  accountTypeLabels,
+  accountTypes,
+  cashFlowTags,
+  defaultDetailCategory,
+  downloadTrialBalanceTemplate,
+  normalizeDetailCategory,
+  normalizeNumber,
+  parseExcelPaste,
+  readTrialBalanceExcelFile,
+  splitDebitCredit
+} from "../utils/accounting.js";
 
 function amount(value) {
   return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -55,16 +69,23 @@ export default function AccountsInput({ accounts, setAccounts }) {
         if (key === "type") {
           return { ...account, type: value, detailCategory: defaultDetailCategory(value) };
         }
+        if (key === "parentId") {
+          return { ...account, parentId: value || null };
+        }
         return { ...account, [key]: ["openingDebit", "openingCredit", "debit", "credit"].includes(key) ? Number(value) : value };
       })
     );
   }
 
   function addRow() {
-    setAccounts((current) => [...current, { id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
+    setAccounts((current) => [...current, { id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: defaultDetailCategory("Assets"), parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
   function removeRow(id) {
+    if (accounts.some((account) => account.parentId === id)) {
+      window.alert("لا يمكن حذف حساب رئيسي له حسابات فرعية. احذف الحسابات الفرعية أولًا أو انقلها إلى حساب رئيسي آخر.");
+      return;
+    }
     setAccounts((current) => current.filter((account) => account.id !== id));
   }
 
@@ -77,17 +98,45 @@ export default function AccountsInput({ accounts, setAccounts }) {
     }
   }
 
+  async function handleExcelFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const parsed = await readTrialBalanceExcelFile(file);
+      if (!parsed.length) {
+        window.alert("لم يتم العثور على حسابات صالحة في الملف.");
+        return;
+      }
+      const replace = window.confirm(`تم العثور على ${parsed.length} حساب في الملف.\nاضغط "موافق" لاعتماد الملف واستبدال ميزان المراجعة الحالي بالكامل، أو "إلغاء" لإضافته إلى الحسابات الحالية.`);
+      setAccounts((current) => (replace ? parsed : [...current, ...parsed]));
+    } catch {
+      window.alert("تعذر قراءة ملف الإكسل. تأكد أن الملف بصيغة xlsx أو xls وبنفس أعمدة النموذج.");
+    }
+  }
+
   return (
     <section className="print-card accounting-panel">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
         <div>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">إدخال ميزان المراجعة</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel: رقم الحساب، الحساب، النوع، التصنيف، رصيد بداية مدين/دائن، حركة مدين/دائن.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">يمكن لصق أعمدة Excel، أو اعتماد ملف إكسل جاهز بنفس ترتيب الأعمدة، ثم تعديل القيم كما تريد. حدد "الحساب الرئيسي" لأي حساب فرعي ليظهر مجمّعًا تحته في ميزان المراجعة.</p>
         </div>
-        <button onClick={addRow} className="no-print inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">
-          <Plus size={18} />
-          إضافة حساب
-        </button>
+        <div className="no-print flex flex-wrap items-center gap-2">
+          <button onClick={downloadTrialBalanceTemplate} className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <FileSpreadsheet size={18} />
+            نموذج إكسل
+          </button>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <FileUp size={18} />
+            اعتماد ملف إكسل
+            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelFile} />
+          </label>
+          <button onClick={addRow} className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700">
+            <Plus size={18} />
+            إضافة حساب
+          </button>
+        </div>
       </div>
       <div className="no-print mb-4 grid gap-3 md:grid-cols-[1fr_220px]">
         <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="بحث باسم الحساب" />
@@ -100,7 +149,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
         <table className="accounting-entry-table detailed-entry-table">
           <thead>
             <tr>
-              <th colSpan="5">بيانات الحساب</th>
+              <th colSpan="6">بيانات الحساب</th>
               <th colSpan="2">رصيد بداية</th>
               <th colSpan="2">حركة الفترة</th>
               <th colSpan="2">رصيد الفترة</th>
@@ -112,6 +161,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
               <th>اسم الحساب</th>
               <th>النوع</th>
               <th>التصنيف التفصيلي</th>
+              <th>الحساب الرئيسي</th>
               <th>تصنيف التدفق</th>
               <th>مدين</th>
               <th>دائن</th>
@@ -140,6 +190,14 @@ export default function AccountsInput({ accounts, setAccounts }) {
                 <td>
                   <select value={normalizeDetailCategory(account.type, account.detailCategory)} onChange={(event) => updateAccount(account.id, "detailCategory", event.target.value)} className="accounting-input min-w-[150px]">
                     {(accountDetailCategories[account.type] || []).map((category) => <option key={category.value} value={category.value}>{accountDetailCategoryLabels[category.value]}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <select value={account.parentId || ""} onChange={(event) => updateAccount(account.id, "parentId", event.target.value)} className="accounting-input min-w-[160px]">
+                    <option value="">— حساب رئيسي —</option>
+                    {accountParentOptions(accounts, account.id).map((option) => (
+                      <option key={option.id} value={option.id}>{option.accountCode ? `${option.accountCode} - ${option.name}` : option.name}</option>
+                    ))}
                   </select>
                 </td>
                 <td>
@@ -173,7 +231,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="5">الإجمالي</td>
+              <td colSpan="6">الإجمالي</td>
               <td className="readonly-money">{amount(visibleTotals.openingDebit)}</td>
               <td className="readonly-money">{amount(visibleTotals.openingCredit)}</td>
               <td className="readonly-money">{amount(visibleTotals.debit)}</td>
@@ -185,7 +243,7 @@ export default function AccountsInput({ accounts, setAccounts }) {
               <td className="no-print"></td>
             </tr>
             <tr>
-              <td colSpan="5">الصافي</td>
+              <td colSpan="6">الصافي</td>
               <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.openingDebit - visibleTotals.openingCredit))}</td>
               <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.debit - visibleTotals.credit))}</td>
               <td className="readonly-money" colSpan="2">{amount(Math.abs(visibleTotals.periodBalanceDebit - visibleTotals.periodBalanceCredit))}</td>

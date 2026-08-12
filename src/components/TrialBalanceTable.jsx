@@ -1,7 +1,12 @@
+import { Fragment } from "react";
 import { accountDetailCategoryLabels, accountTypeLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
 
 function amount(value) {
   return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
+function categoryLabel(row) {
+  return accountDetailCategoryLabels[normalizeDetailCategory(row.type, row.detailCategory)] || accountTypeLabels[row.type];
 }
 
 export default function TrialBalanceTable({ statements }) {
@@ -37,20 +42,37 @@ export default function TrialBalanceTable({ statements }) {
             </tr>
           </thead>
           <tbody>
-            {statements.trialBalanceRows.map((row) => (
-              <tr key={row.id} className="text-slate-700 dark:text-slate-200">
-                <td className="code-cell">{row.accountCode}</td>
-                <td className="name-cell">{row.name}</td>
-                <td>{accountDetailCategoryLabels[normalizeDetailCategory(row.type, row.detailCategory)] || accountTypeLabels[row.type]}</td>
-                <td className="money-cell">{amount(row.openingDebit)}</td>
-                <td className="money-cell">{amount(row.openingCredit)}</td>
-                <td className="money-cell">{amount(row.debit)}</td>
-                <td className="money-cell">{amount(row.credit)}</td>
-                <td className="money-cell balance-cell">{amount(row.periodBalanceDebit)}</td>
-                <td className="money-cell balance-cell">{amount(row.periodBalanceCredit)}</td>
-                <td className="money-cell">{amount(row.endingDebit)}</td>
-                <td className="money-cell">{amount(row.endingCredit)}</td>
-              </tr>
+            {statements.trialBalanceGroups.map((group) => (
+              <Fragment key={group.id}>
+                <tr className={group.isGroup ? "trial-balance-group-row" : "text-slate-700 dark:text-slate-200"}>
+                  <td className="code-cell">{group.accountCode}</td>
+                  <td className="name-cell">{group.name}</td>
+                  <td>{categoryLabel(group)}</td>
+                  <td className="money-cell">{amount(group.openingDebit)}</td>
+                  <td className="money-cell">{amount(group.openingCredit)}</td>
+                  <td className="money-cell">{amount(group.debit)}</td>
+                  <td className="money-cell">{amount(group.credit)}</td>
+                  <td className="money-cell balance-cell">{amount(group.periodBalanceDebit)}</td>
+                  <td className="money-cell balance-cell">{amount(group.periodBalanceCredit)}</td>
+                  <td className="money-cell">{amount(group.endingDebit)}</td>
+                  <td className="money-cell">{amount(group.endingCredit)}</td>
+                </tr>
+                {group.children.map((child) => (
+                  <tr key={child.id} className="trial-balance-child-row text-slate-600 dark:text-slate-300">
+                    <td className="code-cell">{child.accountCode}</td>
+                    <td className="name-cell child-name-cell">{child.name}</td>
+                    <td>{categoryLabel(child)}</td>
+                    <td className="money-cell">{amount(child.openingDebit)}</td>
+                    <td className="money-cell">{amount(child.openingCredit)}</td>
+                    <td className="money-cell">{amount(child.debit)}</td>
+                    <td className="money-cell">{amount(child.credit)}</td>
+                    <td className="money-cell balance-cell">{amount(child.periodBalanceDebit)}</td>
+                    <td className="money-cell balance-cell">{amount(child.periodBalanceCredit)}</td>
+                    <td className="money-cell">{amount(child.endingDebit)}</td>
+                    <td className="money-cell">{amount(child.endingCredit)}</td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
           <tfoot>

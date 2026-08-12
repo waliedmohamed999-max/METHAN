@@ -1,4 +1,5 @@
-import { accountDetailCategoryLabels, money, normalizeDetailCategory } from "../utils/accounting.js";
+import { Fragment } from "react";
+import { accountDetailCategoryLabels, buildAuditOpinionReport, computeFinancialAnalysis, formatAuditOpinionText, money, normalizeDetailCategory } from "../utils/accounting.js";
 
 function amount(value) {
   return Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -67,7 +68,7 @@ function DetailedReportTable({ title, sections }) {
   );
 }
 
-function AccountsTable({ title, rows, totals }) {
+function AccountsTable({ title, groups, totals }) {
   return (
     <section className="pdf-section pdf-trial-section">
       <h2>{title}</h2>
@@ -94,20 +95,37 @@ function AccountsTable({ title, rows, totals }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((account) => (
-            <tr key={account.id}>
-              <td>{account.accountCode}</td>
-              <td>{account.name}</td>
-              <td>{accountDetailCategoryLabels[normalizeDetailCategory(account.type, account.detailCategory)]}</td>
-              <td>{amount(account.openingDebit)}</td>
-              <td>{amount(account.openingCredit)}</td>
-              <td>{amount(account.debit)}</td>
-              <td>{amount(account.credit)}</td>
-              <td>{amount(account.periodBalanceDebit)}</td>
-              <td>{amount(account.periodBalanceCredit)}</td>
-              <td>{amount(account.endingDebit)}</td>
-              <td>{amount(account.endingCredit)}</td>
-            </tr>
+          {groups.map((group) => (
+            <Fragment key={group.id}>
+              <tr className={group.isGroup ? "pdf-group-row" : ""}>
+                <td>{group.accountCode}</td>
+                <td>{group.name}</td>
+                <td>{accountDetailCategoryLabels[normalizeDetailCategory(group.type, group.detailCategory)]}</td>
+                <td>{amount(group.openingDebit)}</td>
+                <td>{amount(group.openingCredit)}</td>
+                <td>{amount(group.debit)}</td>
+                <td>{amount(group.credit)}</td>
+                <td>{amount(group.periodBalanceDebit)}</td>
+                <td>{amount(group.periodBalanceCredit)}</td>
+                <td>{amount(group.endingDebit)}</td>
+                <td>{amount(group.endingCredit)}</td>
+              </tr>
+              {group.children.map((child) => (
+                <tr key={child.id} className="pdf-child-row">
+                  <td>{child.accountCode}</td>
+                  <td>{child.name}</td>
+                  <td>{accountDetailCategoryLabels[normalizeDetailCategory(child.type, child.detailCategory)]}</td>
+                  <td>{amount(child.openingDebit)}</td>
+                  <td>{amount(child.openingCredit)}</td>
+                  <td>{amount(child.debit)}</td>
+                  <td>{amount(child.credit)}</td>
+                  <td>{amount(child.periodBalanceDebit)}</td>
+                  <td>{amount(child.periodBalanceCredit)}</td>
+                  <td>{amount(child.endingDebit)}</td>
+                  <td>{amount(child.endingCredit)}</td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
         <tfoot>
@@ -128,7 +146,53 @@ function AccountsTable({ title, rows, totals }) {
   );
 }
 
-export default function PrintableReport({ profile, statements }) {
+function formatAnalysisValue(item) {
+  if (item.value === null || !Number.isFinite(item.value)) return "—";
+  if (item.format === "money") return money(item.value);
+  if (item.format === "percent") return `${item.value.toFixed(1)}%`;
+  if (item.format === "times") return `${item.value.toFixed(2)}×`;
+  return item.value.toFixed(2);
+}
+
+function FinancialAnalysisPdfSection({ statements }) {
+  const analysis = computeFinancialAnalysis(statements);
+  return (
+    <section className="pdf-section">
+      <h2>التحليل المالي</h2>
+      {analysis.groups.map((group) => (
+        <table className="pdf-table pdf-detail-table pdf-analysis-table" key={group.title}>
+          <thead>
+            <tr>
+              <th colSpan="3">{group.title}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {group.items.map((item) => (
+              <tr key={item.label}>
+                <td>{item.label}</td>
+                <td>{formatAnalysisValue(item)}</td>
+                <td className="pdf-note-cell">{item.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
+    </section>
+  );
+}
+
+function AuditOpinionPdfSection({ profile, statements, overrideText }) {
+  const report = buildAuditOpinionReport(profile, statements);
+  const text = overrideText || formatAuditOpinionText(report);
+  return (
+    <section className="pdf-section pdf-opinion-section">
+      <h2>تقرير رأي مراجع الحسابات المستقل</h2>
+      <pre className="pdf-opinion-text">{text}</pre>
+    </section>
+  );
+}
+
+export default function PrintableReport({ profile, statements, opinionOverride }) {
   const period = `${profile.periodStart} إلى ${profile.periodEnd}`;
   const generatedAt = new Intl.DateTimeFormat("ar-SA", {
     dateStyle: "medium",
@@ -169,8 +233,8 @@ export default function PrintableReport({ profile, statements }) {
       </section>
 
       <AccountsTable
-        title="ميزان المراجعة"
-        rows={statements.trialBalanceRows}
+        title="ميزان المراجعة بالحسابات الفرعية والتجميع"
+        groups={statements.trialBalanceGroups}
         totals={{
           openingDebit: statements.totalOpeningDebit,
           openingCredit: statements.totalOpeningCredit,
@@ -209,6 +273,10 @@ export default function PrintableReport({ profile, statements }) {
           { title: "رأس المال آخر المدة", rows: [{ id: "ending-equity", label: "رأس المال آخر المدة", value: statements.endingEquity }], totalLabel: "رأس المال آخر المدة", totalValue: statements.endingEquity }
         ]}
       />
+
+      <FinancialAnalysisPdfSection statements={statements} />
+
+      <AuditOpinionPdfSection profile={profile} statements={statements} overrideText={opinionOverride} />
 
       <footer className="pdf-footer">
         <span>تم إنشاء التقرير في {generatedAt}</span>
