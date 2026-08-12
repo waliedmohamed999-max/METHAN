@@ -192,6 +192,12 @@ export default function App() {
     setPrintRequest({ section, nonce: Date.now() });
   }
 
+  const [locateRequest, setLocateRequest] = useState(null);
+
+  function locateAccount(id) {
+    setLocateRequest({ id, nonce: Date.now() });
+  }
+
   useEffect(() => {
     if (!printRequest) return;
     const tabLabel = tabs.find((tab) => tab.id === printRequest.section)?.label || "تقرير";
@@ -269,7 +275,7 @@ export default function App() {
 
           <section className="top-insights no-print">
             <div className="top-insights-main">
-              <ValidationPanel statements={statements} />
+              <ValidationPanel statements={statements} accounts={accounts} onLocate={locateAccount} />
               <RatiosPanel statements={statements} />
             </div>
             <section className="print-card workspace-panel compact-chart">
@@ -290,7 +296,7 @@ export default function App() {
             </section>
           </section>
 
-          <AccountsInput accounts={accounts} setAccounts={setAccounts} />
+          <AccountsInput accounts={accounts} setAccounts={setAccounts} locateRequest={locateRequest} />
 
           <section className="workspace-panel no-print">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

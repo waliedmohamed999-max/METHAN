@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, ClipboardPaste, CornerDownLeft, FileSpreadsheet, FileUp, ListTree, Plus, Trash2 } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   accountDetailCategories,
   accountDetailCategoryLabels,
@@ -46,10 +46,12 @@ function sumMoney(rows) {
   }, Object.fromEntries(MONEY_FIELDS.map((field) => [field, 0])));
 }
 
-export default function AccountsInput({ accounts, setAccounts }) {
+export default function AccountsInput({ accounts, setAccounts, locateRequest }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const [highlightId, setHighlightId] = useState(null);
+  const rowRefs = useRef(new Map());
   const isBrowsingAll = !query.trim() && typeFilter === "All";
 
   const visibleAccounts = useMemo(() => {
@@ -81,6 +83,32 @@ export default function AccountsInput({ accounts, setAccounts }) {
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!locateRequest) return;
+    const target = accounts.find((account) => account.id === locateRequest.id);
+    if (!target) return;
+    setQuery("");
+    setTypeFilter("All");
+    if (target.parentId) {
+      setCollapsedIds((current) => {
+        if (!current.has(target.parentId)) return current;
+        const next = new Set(current);
+        next.delete(target.parentId);
+        return next;
+      });
+    }
+    setHighlightId(locateRequest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locateRequest]);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const node = rowRefs.current.get(highlightId);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = setTimeout(() => setHighlightId(null), 2600);
+    return () => clearTimeout(timer);
+  }, [highlightId]);
 
   function updateAccount(id, key, value) {
     setAccounts((current) =>
@@ -162,8 +190,17 @@ export default function AccountsInput({ accounts, setAccounts }) {
   }
 
   function renderAccountRow(account, isChild, mainMeta) {
+    const rowClasses = [isChild ? "account-row-child" : "account-row-main"];
+    if (account.id === highlightId) rowClasses.push("account-row-highlight");
     return (
-      <tr key={account.id} className={isChild ? "account-row-child" : "account-row-main"}>
+      <tr
+        key={account.id}
+        ref={(node) => {
+          if (node) rowRefs.current.set(account.id, node);
+          else rowRefs.current.delete(account.id);
+        }}
+        className={rowClasses.join(" ")}
+      >
         <td>
           <input value={account.accountCode || ""} onChange={(event) => updateAccount(account.id, "accountCode", event.target.value)} className="accounting-input w-24 text-center" placeholder="101" />
         </td>

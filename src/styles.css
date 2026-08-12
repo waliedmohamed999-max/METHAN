@@ -468,6 +468,36 @@ body {
   padding: 4px 8px !important;
 }
 
+.account-row-highlight td {
+  animation: account-row-flash 2.6s ease-out;
+}
+
+.account-row-highlight td:first-child {
+  box-shadow: inset 3px 0 0 #e11d48;
+}
+
+@keyframes account-row-flash {
+  0% {
+    background-color: #fecaca;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.dark .account-row-highlight td {
+  animation-name: account-row-flash-dark;
+}
+
+@keyframes account-row-flash-dark {
+  0% {
+    background-color: #7f1d1d;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 .dark .account-add-child-row td {
   border-bottom-color: #334155;
 }
