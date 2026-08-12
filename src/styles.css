@@ -789,15 +789,95 @@ body {
     break-inside: avoid;
   }
 
-  .pdf-opinion-text {
+  .pdf-opinion-letterhead {
+    border: 1.5px solid #0f766e;
+    padding: 16px 20px;
+    background: #ffffff;
+  }
+
+  .pdf-opinion-heading {
+    text-align: center;
+    border-bottom: 2px solid #0f766e;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+
+  .pdf-opinion-heading h2 {
     margin: 0;
-    padding: 10px 12px;
-    border: 1px solid #d8dee9;
-    background: #f8fafc;
-    white-space: pre-wrap;
-    font-family: "Segoe UI", Arial, sans-serif;
+    padding: 0;
+    background: none;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+
+  .pdf-opinion-reference {
+    margin: 4px 0 0;
+    color: #0f766e;
     font-size: 10px;
-    line-height: 1.6;
+    font-weight: 700;
+  }
+
+  .pdf-opinion-body {
+    font-size: 10.5px;
+    line-height: 1.9;
+  }
+
+  .pdf-opinion-block {
+    margin-bottom: 10px;
+  }
+
+  .pdf-opinion-block h3 {
+    margin: 0 0 3px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #0f766e;
+  }
+
+  .pdf-opinion-paragraph {
+    margin: 0 0 10px;
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  .pdf-opinion-signature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 16px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed #94a3b8;
+    align-items: start;
+  }
+
+  .pdf-stamp-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 90px;
+    border: 1.5px dashed #94a3b8;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .pdf-opinion-signature-details {
+    font-size: 10px;
+    line-height: 1.8;
+  }
+
+  .pdf-opinion-signature-details p {
+    margin: 0 0 4px;
+  }
+
+  .pdf-opinion-signature-line {
+    margin-top: 10px !important;
+    padding-top: 8px;
+    border-top: 1px solid #334155;
+    width: 60%;
   }
 
   .pdf-two-columns {

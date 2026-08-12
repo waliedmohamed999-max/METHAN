@@ -181,13 +181,74 @@ function FinancialAnalysisPdfSection({ statements }) {
   );
 }
 
+function parseOpinionText(text) {
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const [titleLine = "تقرير مراجع الحسابات المستقل", referenceLine = ""] = (paragraphs[0] || "").split("\n");
+  let bodyParagraphs = paragraphs.slice(1);
+
+  let signatureLines = [];
+  const last = bodyParagraphs[bodyParagraphs.length - 1];
+  if (last && /مكتب المراجعة|المراجع القانوني|رقم الترخيص|التوقيع/.test(last)) {
+    signatureLines = last.split("\n");
+    bodyParagraphs = bodyParagraphs.slice(0, -1);
+  }
+
+  return { title: titleLine, referenceLine, bodyParagraphs, signatureLines };
+}
+
+function OpinionParagraph({ block }) {
+  const lines = block.split("\n");
+  const [first, ...restLines] = lines;
+  const remainder = restLines.join(" ").trim();
+  const looksLikeHeading = remainder && first.length < 60 && !/[.:]$/.test(first);
+
+  if (looksLikeHeading) {
+    return (
+      <div className="pdf-opinion-block">
+        <h3>{first}</h3>
+        <p className="pdf-opinion-paragraph">{remainder}</p>
+      </div>
+    );
+  }
+  return <p className="pdf-opinion-paragraph">{lines.join(" ")}</p>;
+}
+
 function AuditOpinionPdfSection({ profile, statements, overrideText }) {
   const report = buildAuditOpinionReport(profile, statements);
   const text = overrideText || formatAuditOpinionText(report);
+  const { title, referenceLine, bodyParagraphs, signatureLines } = parseOpinionText(text);
+  const reportDate = report.period.split(" إلى ")[1] || "";
+  const findSignatureValue = (label) => signatureLines.find((line) => line.startsWith(label))?.slice(label.length).trim();
+
   return (
     <section className="pdf-section pdf-opinion-section">
-      <h2>تقرير رأي مراجع الحسابات المستقل</h2>
-      <pre className="pdf-opinion-text">{text}</pre>
+      <div className="pdf-opinion-letterhead">
+        <div className="pdf-opinion-heading">
+          <h2>{title}</h2>
+          {referenceLine ? <p className="pdf-opinion-reference">{referenceLine}</p> : null}
+        </div>
+
+        <div className="pdf-opinion-body">
+          {bodyParagraphs.map((block, index) => (
+            <OpinionParagraph key={index} block={block} />
+          ))}
+        </div>
+
+        <div className="pdf-opinion-signature-grid">
+          <div className="pdf-stamp-box">ختم واعتماد المكتب</div>
+          <div className="pdf-opinion-signature-details">
+            <p>{report.reportCity}، {reportDate}</p>
+            <p><strong>مكتب المراجعة:</strong> {findSignatureValue("مكتب المراجعة:") || report.auditFirmName}</p>
+            <p><strong>المراجع القانوني:</strong> {findSignatureValue("المراجع القانوني:") || report.auditorName}</p>
+            <p><strong>رقم الترخيص:</strong> {findSignatureValue("رقم الترخيص:") || report.licenseNumber}</p>
+            <p className="pdf-opinion-signature-line">التوقيع: ....................................</p>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -272,48 +333,55 @@ export default function PrintableReport({ profile, statements, opinionOverride, 
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date());
+  // A formal audit opinion letter stands on its own — no dashboard-style cover/summary cards,
+  // straight into the letterhead the way an audit office would issue it.
+  const isOpinionOnly = section === "opinion";
 
   return (
     <article className="pdf-report" dir="rtl">
-      <header className="pdf-cover">
-        <div className="pdf-cover-title">
-          {profile.logoDataUrl ? <img src={profile.logoDataUrl} alt="" className="pdf-logo" /> : null}
-          <div>
-            <p className="pdf-kicker">{sectionTitles[section] || sectionTitles.report}</p>
-            <h1>{profile.companyName}</h1>
-            <p>الفترة المالية: {period}</p>
-          </div>
-        </div>
-        <div className="pdf-stamp">
-          <strong>ميزان</strong>
-          <span>تقرير آلي</span>
-        </div>
-      </header>
+      {!isOpinionOnly ? (
+        <>
+          <header className="pdf-cover">
+            <div className="pdf-cover-title">
+              {profile.logoDataUrl ? <img src={profile.logoDataUrl} alt="" className="pdf-logo" /> : null}
+              <div>
+                <p className="pdf-kicker">{sectionTitles[section] || sectionTitles.report}</p>
+                <h1>{profile.companyName}</h1>
+                <p>الفترة المالية: {period}</p>
+              </div>
+            </div>
+            <div className="pdf-stamp">
+              <strong>ميزان</strong>
+              <span>تقرير آلي</span>
+            </div>
+          </header>
 
-      <section className="pdf-summary">
-        <div>
-          <span>إجمالي المدين</span>
-          <strong>{money(statements.totalDebit)}</strong>
-        </div>
-        <div>
-          <span>إجمالي الدائن</span>
-          <strong>{money(statements.totalCredit)}</strong>
-        </div>
-        <div>
-          <span>صافي الربح</span>
-          <strong>{money(statements.netIncome)}</strong>
-        </div>
-        <div>
-          <span>الأصول</span>
-          <strong>{money(statements.totals.Assets)}</strong>
-        </div>
-      </section>
+          <section className="pdf-summary">
+            <div>
+              <span>إجمالي المدين</span>
+              <strong>{money(statements.totalDebit)}</strong>
+            </div>
+            <div>
+              <span>إجمالي الدائن</span>
+              <strong>{money(statements.totalCredit)}</strong>
+            </div>
+            <div>
+              <span>صافي الربح</span>
+              <strong>{money(statements.netIncome)}</strong>
+            </div>
+            <div>
+              <span>الأصول</span>
+              <strong>{money(statements.totals.Assets)}</strong>
+            </div>
+          </section>
+        </>
+      ) : null}
 
       <SectionBody section={section} profile={profile} statements={statements} opinionOverride={opinionOverride} />
 
       <footer className="pdf-footer">
         <span>تم إنشاء التقرير في {generatedAt}</span>
-        <span>{statements.balancedTrial ? "ميزان المراجعة متوازن" : "ميزان المراجعة غير متوازن"}</span>
+        {!isOpinionOnly ? <span>{statements.balancedTrial ? "ميزان المراجعة متوازن" : "ميزان المراجعة غير متوازن"}</span> : null}
       </footer>
     </article>
   );

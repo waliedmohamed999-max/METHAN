@@ -1,4 +1,4 @@
-import { RotateCcw, ShieldCheck } from "lucide-react";
+import { Download, RotateCcw, ShieldCheck } from "lucide-react";
 import { buildAuditOpinionReport, formatAuditOpinionText } from "../utils/accounting.js";
 
 const toneByType = {
@@ -12,10 +12,11 @@ const signatureFields = [
   { key: "auditFirmName", label: "اسم مكتب المراجعة" },
   { key: "auditorName", label: "اسم المراجع القانوني" },
   { key: "licenseNumber", label: "رقم الترخيص" },
-  { key: "reportCity", label: "مدينة إصدار التقرير" }
+  { key: "reportCity", label: "مدينة إصدار التقرير" },
+  { key: "reportReference", label: "رقم التقرير (اختياري)" }
 ];
 
-export default function AuditOpinionReport({ profile, setProfile, statements, overrideText, onChangeOverride }) {
+export default function AuditOpinionReport({ profile, setProfile, statements, overrideText, onChangeOverride, onDownload }) {
   const report = buildAuditOpinionReport(profile, statements);
   const defaultText = formatAuditOpinionText(report);
   const displayText = overrideText || defaultText;
@@ -33,11 +34,21 @@ export default function AuditOpinionReport({ profile, setProfile, statements, ov
           </span>
           <h2 className="text-lg font-bold text-slate-950 dark:text-white">تقرير رأي مراجع الحسابات المستقل</h2>
         </div>
-        <span className={`rounded-md border px-3 py-1.5 text-sm font-bold ${toneByType[report.type]}`}>{report.label}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`rounded-md border px-3 py-1.5 text-sm font-bold ${toneByType[report.type]}`}>{report.label}</span>
+          <button
+            onClick={onDownload}
+            className="inline-flex items-center gap-2 rounded-md bg-teal-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700"
+            title="تحميل تقرير رأي المراجع وحده بصيغة PDF"
+          >
+            <Download size={16} />
+            تحميل التقرير PDF
+          </button>
+        </div>
       </div>
 
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-        يُقترح نوع الرأي تلقائيًا استنادًا إلى نتائج فحص توازن ميزان المراجعة ومعادلة المركز المالي واكتمال تصنيف الحسابات. يمكنك مراجعة النص وتعديله يدويًا قبل الطباعة.
+        يُقترح نوع الرأي تلقائيًا استنادًا إلى نتائج فحص توازن ميزان المراجعة ومعادلة المركز المالي واكتمال تصنيف الحسابات. يمكنك مراجعة النص وتعديله يدويًا قبل الطباعة، وتحميل التقرير منسّقًا رسميًا بصيغة PDF من الزر أعلاه.
       </p>
 
       <div className="no-print mb-4 grid gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">

@@ -538,13 +538,15 @@ export function buildAuditOpinionReport(profile, statements) {
     auditFirmName: profile.auditFirmName || "....................................",
     auditorName: profile.auditorName || "....................................",
     licenseNumber: profile.licenseNumber || "....................",
-    reportCity: profile.reportCity || "...................."
+    reportCity: profile.reportCity || "....................",
+    reportReference: profile.reportReference || ""
   };
 }
 
 export function formatAuditOpinionText(report) {
   return [
     report.title,
+    ...(report.reportReference ? [`رقم التقرير: ${report.reportReference}`] : []),
     "",
     report.addressee,
     "",

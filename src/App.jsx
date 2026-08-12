@@ -63,7 +63,8 @@ const defaultProfile = {
   auditFirmName: "",
   auditorName: "",
   licenseNumber: "",
-  reportCity: ""
+  reportCity: "",
+  reportReference: ""
 };
 
 export default function App() {
@@ -184,17 +185,30 @@ export default function App() {
     setAccounts([{ id: crypto.randomUUID(), accountCode: "", name: "", type: "Assets", detailCategory: "currentAssets", parentId: null, openingDebit: 0, openingCredit: 0, debit: 0, credit: 0, cashFlowTag: "operating" }]);
   }
 
-  function printCurrentReport() {
-    const tabLabel = tabs.find((tab) => tab.id === activeTab)?.label || "تقرير";
+  const [printRequest, setPrintRequest] = useState(null);
+  const printSection = printRequest?.section || activeTab;
+
+  function downloadReport(section) {
+    setPrintRequest({ section, nonce: Date.now() });
+  }
+
+  useEffect(() => {
+    if (!printRequest) return;
+    const tabLabel = tabs.find((tab) => tab.id === printRequest.section)?.label || "تقرير";
     const previousTitle = document.title;
     document.title = `${tabLabel} - ${profile.companyName || "ميزان"}`;
+
     function restoreTitle() {
       document.title = previousTitle;
       window.removeEventListener("afterprint", restoreTitle);
     }
     window.addEventListener("afterprint", restoreTitle);
-    window.print();
-  }
+
+    // Wait a frame so the print-only section has re-rendered with the requested section
+    // before the (synchronous, blocking) print dialog opens.
+    const frame = requestAnimationFrame(() => window.print());
+    return () => cancelAnimationFrame(frame);
+  }, [printRequest]);
 
   const chartData = {
     labels: ["الإيرادات", "المصروفات"],
@@ -234,7 +248,7 @@ export default function App() {
               <Download size={18} />
               Backup
             </button>
-            <button onClick={printCurrentReport} className="toolbar-button-primary" title="تحميل التقرير المعروض حاليًا فقط">
+            <button onClick={() => downloadReport(activeTab)} className="toolbar-button-primary" title="تحميل التقرير المعروض حاليًا فقط">
               <Printer size={18} />
               PDF
             </button>
@@ -297,7 +311,7 @@ export default function App() {
             </nav>
           </section>
 
-          <TabContent activeTab={activeTab} statements={statements} profile={profile} setProfile={setProfile} opinionOverride={opinionOverride} setOpinionOverride={setOpinionOverride} />
+          <TabContent activeTab={activeTab} statements={statements} profile={profile} setProfile={setProfile} opinionOverride={opinionOverride} setOpinionOverride={setOpinionOverride} onDownloadOpinion={() => downloadReport("opinion")} />
         </div>
       </div>
       <div className="no-print mx-auto max-w-[1600px] px-4 pb-8 lg:px-6">
@@ -308,7 +322,7 @@ export default function App() {
               يحمّل الزر تقرير التبويب المفتوح حاليًا فقط («{tabs.find((tab) => tab.id === activeTab)?.label}») بتنسيق PDF احترافي. لتحميل كل القوائم مجمّعة في ملف واحد، افتح تبويب "تقرير شامل" أولًا.
             </p>
           </div>
-          <button onClick={printCurrentReport} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">
+          <button onClick={() => downloadReport(activeTab)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700">
             <Printer size={18} />
             تحميل PDF لهذا التقرير
           </button>
@@ -316,13 +330,13 @@ export default function App() {
       </div>
       </div>
       <div className="print-only">
-        <PrintableReport profile={profile} statements={statements} opinionOverride={opinionOverride} section={activeTab} />
+        <PrintableReport profile={profile} statements={statements} opinionOverride={opinionOverride} section={printSection} />
       </div>
     </main>
   );
 }
 
-function TabContent({ activeTab, statements, profile, setProfile, opinionOverride, setOpinionOverride }) {
+function TabContent({ activeTab, statements, profile, setProfile, opinionOverride, setOpinionOverride, onDownloadOpinion }) {
   const periodLabel = `${profile.companyName} | ${profile.periodStart} إلى ${profile.periodEnd}`;
 
   if (activeTab === "trial") {
@@ -334,7 +348,7 @@ function TabContent({ activeTab, statements, profile, setProfile, opinionOverrid
   }
 
   if (activeTab === "opinion") {
-    return <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />;
+    return <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} onDownload={onDownloadOpinion} />;
   }
 
   if (activeTab === "income") {
@@ -412,7 +426,7 @@ function TabContent({ activeTab, statements, profile, setProfile, opinionOverrid
           ]}
         />
         <FinancialAnalysisReport title={`التحليل المالي - ${periodLabel}`} statements={statements} />
-        <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} />
+        <AuditOpinionReport profile={profile} setProfile={setProfile} statements={statements} overrideText={opinionOverride} onChangeOverride={setOpinionOverride} onDownload={onDownloadOpinion} />
       </div>
     );
   }
